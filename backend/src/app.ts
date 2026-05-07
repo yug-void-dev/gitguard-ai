@@ -13,8 +13,10 @@ import { env, isProduction } from './config/env';
 import { requestIdMiddleware } from './middlewares/requestId';
 import { requestLogger } from './middlewares/requestLogger';
 import { globalErrorHandler, notFoundHandler } from './middlewares/errorHandler';
+import cookieParser from 'cookie-parser';
 import webhookRoutes from './routes/webhooks';
 import healthRoutes from './routes/health';
+import authRoutes from './routes/authRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -38,7 +40,10 @@ export function createApp(): Application {
     }),
   );
 
-  // ── 3. CORS ───────────────────────────────────────────────────────────
+  // ── 3. Cookies ────────────────────────────────────────────────────────
+  app.use(cookieParser());
+
+  // ── 4. CORS ───────────────────────────────────────────────────────────
   const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim());
 
   app.use(
@@ -60,7 +65,7 @@ export function createApp(): Application {
         'X-Request-ID',
       ],
       exposedHeaders: ['X-Request-ID'],
-      credentials: false,
+      credentials: true, // Required for JWT cookies
     }),
   );
 
@@ -77,6 +82,9 @@ export function createApp(): Application {
 
   app.use('/health', healthRoutes);
   app.use('/api/webhooks', webhookRoutes);
+
+  // Auth routes (Apply JSON parser only here to avoid conflict with webhooks)
+  app.use('/api/auth', express.json(), authRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

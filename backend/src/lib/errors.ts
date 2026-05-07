@@ -94,6 +94,17 @@ export class ValidationError extends AppError {
   }
 }
 
+// ─── Authentication Errors ───────────────────────────────────────────────────
+
+/**
+ * Thrown when authentication fails (e.g. invalid JWT, failed OAuth).
+ */
+export class AuthError extends AppError {
+  constructor(message = 'Authentication failed') {
+    super(message, HttpStatus.UNAUTHORIZED, 'AUTH_ERROR');
+  }
+}
+
 // ─── Database Errors ─────────────────────────────────────────────────────────
 
 /**

@@ -52,6 +52,15 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
     .default('info'),
+
+  // GitHub OAuth
+  GITHUB_CLIENT_ID: z.string().min(1, 'GITHUB_CLIENT_ID is required'),
+  GITHUB_CLIENT_SECRET: z.string().min(1, 'GITHUB_CLIENT_SECRET is required'),
+  GITHUB_CALLBACK_URL: z.string().url('GITHUB_CALLBACK_URL must be a valid URL'),
+
+  // JWT
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_EXPIRES_IN: z.string().default('7d'),
 });
 
 /** Parsed and validated environment variables */

@@ -1,0 +1,99 @@
+version: '3.9'
+
+# ============================================================
+# GitGuard AI — Docker Compose
+# ============================================================
+# Usage:
+#   Development:  docker compose up
+#   Production:   docker compose -f docker-compose.yml up -d
+# ============================================================
+
+services:
+
+  # ── Backend API ────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: gitguard-backend
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3001}:3001'
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:?GITHUB_WEBHOOK_SECRET is required}
+      MONGODB_URI: mongodb://mongo:27017/gitguard
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WEBHOOK_RATE_LIMIT_MAX: ${WEBHOOK_RATE_LIMIT_MAX:-30}
+      WEBHOOK_RATE_LIMIT_WINDOW_MS: ${WEBHOOK_RATE_LIMIT_WINDOW_MS:-60000}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - gitguard-network
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3001/health', r => process.exit(r.statusCode===200?0:1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── MongoDB ────────────────────────────────────────────────
+  mongo:
+    image: mongo:7.0-jammy
+    container_name: gitguard-mongo
+    restart: unless-stopped
+    ports:
+      - '${MONGO_PORT:-27017}:27017'
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    environment:
+      # Uncomment to enable auth in production:
+      # MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      # MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD required}
+      MONGO_INITDB_DATABASE: gitguard
+    networks:
+      - gitguard-network
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Mongo Express (Dev UI) ─────────────────────────────────
+  # Remove or comment out in production
+  mongo-express:
+    image: mongo-express:latest
+    container_name: gitguard-mongo-ui
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-changeme}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - gitguard-network
+    profiles:
+      - dev  # Only start with: docker compose --profile dev up
+
+# ── Volumes ────────────────────────────────────────────────
+volumes:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────
+networks:
+  gitguard-network:
+    driver: bridge

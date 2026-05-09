@@ -1,35 +1,44 @@
 /**
  * @file src/routes/webhooks.ts
- * @description Express router for GitHub webhook endpoints.
+ * @description GitHub webhook route with full security middleware chain.
  *
- * Applies webhook-specific middleware chain:
- *   rawBodyJsonParser → requireBody → webhookRateLimiter → controller
+ * Middleware order (matters):
+ *   ipWhitelist → sanitizeHeaders → requireJsonContentType
+ *   → rawBodyJsonParser → requireBody → replayProtection
+ *   → webhookRateLimiter → handleGithubWebhook
  */
 
 import { Router } from 'express';
 import { rawBodyJsonParser, requireBody } from '../middlewares/rawBody';
 import { webhookRateLimiter } from '../middlewares/rateLimiter';
 import { ipWhitelistMiddleware } from '../middlewares/ipWhitelist';
+<<<<<<< HEAD
+=======
+import { sanitizeHeaders, requireJsonContentType } from '../middlewares/sanitize';
+import { replayProtectionMiddleware } from '../middlewares/replayProtection';
+>>>>>>> 34c35bf (fix(core): fix jest config and add missing supertest dependency)
 import { handleGithubWebhook } from '../controllers/webhookController';
 
 const router = Router();
 
-/**
- * POST /api/webhooks/github
- *
- * Middleware chain (order matters):
- * 1. rawBodyJsonParser — capture raw bytes for HMAC; parse JSON for req.body
- * 2. requireBody       — reject empty body early
- * 3. webhookRateLimiter— IP-based rate limiting
- * 4. handleGithubWebhook — main business logic
- */
 router.post(
   '/github',
+<<<<<<< HEAD
   rawBodyJsonParser(),
   requireBody,
   ipWhitelistMiddleware,
   webhookRateLimiter,
   handleGithubWebhook,
+=======
+  ipWhitelistMiddleware,          // 1. IP whitelist (if configured)
+  sanitizeHeaders,                // 2. Header size/null-byte check
+  requireJsonContentType,         // 3. Enforce application/json
+  rawBodyJsonParser(),            // 4. Capture raw bytes + parse JSON
+  requireBody,                    // 5. Reject empty body
+  replayProtectionMiddleware,     // 6. Deduplicate delivery IDs
+  webhookRateLimiter,             // 7. Rate limit per IP
+  handleGithubWebhook,            // 8. Business logic
+>>>>>>> 34c35bf (fix(core): fix jest config and add missing supertest dependency)
 );
 
 export default router;

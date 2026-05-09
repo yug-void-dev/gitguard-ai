@@ -1,44 +1,42 @@
 /**
  * @file tests/integration/webhook.test.ts
- * @description Integration tests for the POST /api/webhooks/github endpoint.
- *
- * Uses Supertest to make real HTTP requests against the Express app.
- * MongoDB is mocked via jest.mock to avoid needing a real database.
+ * @description Integration tests for POST /api/webhooks/github endpoint.
+ * MongoDB and Arctic (ESM) are mocked — no real DB or OAuth needed.
  */
 
 import '../helpers/setup';
 
-// ── Module mocks (must be before any imports that pull them in) ───────────────
+// ── Module mocks (must be before any imports) ──────────────────────────────
 
-// Mock DB connection so tests don't need a real MongoDB
 jest.mock('../../src/config/database', () => ({
   connectDatabase: jest.fn().mockResolvedValue(undefined),
   disconnectDatabase: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Mock AuditLog model to avoid real DB writes
 jest.mock('../../src/models/AuditLog', () => ({
-  AuditLog: {
-    create: jest.fn().mockResolvedValue({}),
-  },
+  AuditLog: { create: jest.fn().mockResolvedValue({}) },
 }));
 
-// Mock mongoose connection state (for health checks)
+// Mock arctic (pure ESM — cannot be loaded by ts-jest without full ESM setup)
+jest.mock('arctic', () => ({
+  GitHub: jest.fn().mockImplementation(() => ({
+    createAuthorizationURL: jest.fn(),
+    validateAuthorizationCode: jest.fn(),
+  })),
+  generateState: jest.fn().mockReturnValue('mock-state'),
+  generateCodeVerifier: jest.fn().mockReturnValue('mock-verifier'),
+}));
+
 jest.mock('mongoose', () => {
   const actual = jest.requireActual('mongoose');
   return {
     ...actual,
-    connection: {
-      ...actual.connection,
-      readyState: 1,
-      on: jest.fn(),
-    },
+    connection: { ...actual.connection, readyState: 1, on: jest.fn() },
     connect: jest.fn().mockResolvedValue(undefined),
     disconnect: jest.fn().mockResolvedValue(undefined),
   };
 });
 
-// Mock env
 jest.mock('../../src/config/env', () => ({
   env: {
     GITHUB_WEBHOOK_SECRET: 'test-webhook-secret-at-least-16-chars',
@@ -49,6 +47,11 @@ jest.mock('../../src/config/env', () => ({
     LOG_LEVEL: 'silent',
     WEBHOOK_RATE_LIMIT_MAX: 30,
     WEBHOOK_RATE_LIMIT_WINDOW_MS: 60000,
+    GITHUB_CLIENT_ID: 'mock-client-id',
+    GITHUB_CLIENT_SECRET: 'mock-client-secret',
+    GITHUB_CALLBACK_URL: 'http://localhost:3001/api/auth/github/callback',
+    JWT_SECRET: 'mock-jwt-secret-that-is-at-least-32-chars!!',
+    JWT_EXPIRES_IN: '7d',
   },
   isProduction: false,
   isDevelopment: false,
@@ -71,67 +74,58 @@ import {
 const TEST_SECRET = 'test-webhook-secret-at-least-16-chars';
 const app = createApp();
 
-// Helper: generate valid signature
+// Unique delivery ID per call — prevents replay protection interference
+let _deliveryCount = 0;
+const uid = (): string => `delivery-${Date.now()}-${++_deliveryCount}`;
 const sign = (body: string): string => generateSignature(body, TEST_SECRET);
 
-// Helper: send webhook request
-const sendWebhook = (
-  body: unknown,
-  signature: string,
-  event = 'pull_request',
-) => {
+const sendWebhook = (body: unknown, signature: string, event = 'pull_request') => {
   const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
   return request(app)
     .post('/api/webhooks/github')
     .set('Content-Type', 'application/json')
     .set('X-Hub-Signature-256', signature)
     .set('X-GitHub-Event', event)
-    .set('X-GitHub-Delivery', 'test-delivery-id')
+    .set('X-GitHub-Delivery', uid())
     .send(bodyStr);
 };
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+// ─── Test Suites ──────────────────────────────────────────────────────────────
 
 describe('POST /api/webhooks/github', () => {
 
   describe('✅ Successful webhook processing', () => {
-    it('should return 200 for a valid "opened" PR event', async () => {
+    it('should return 200 + eventId for valid "opened" PR', async () => {
       const bodyStr = openedPRPayloadString;
       const res = await sendWebhook(openedPRPayload, sign(bodyStr));
-
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.eventId).toBeDefined();
       expect(typeof res.body.eventId).toBe('string');
     });
 
-    it('should return 200 for a valid "synchronize" PR event', async () => {
+    it('should return 200 for valid "synchronize" PR', async () => {
       const bodyStr = JSON.stringify(synchronizePRPayload);
       const res = await sendWebhook(synchronizePRPayload, sign(bodyStr));
-
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
 
-    it('should return 200 for a valid "reopened" PR event', async () => {
+    it('should return 200 for valid "reopened" PR', async () => {
       const bodyStr = JSON.stringify(reopenedPRPayload);
       const res = await sendWebhook(reopenedPRPayload, sign(bodyStr));
-
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
 
-    it('should include X-Request-ID in the response headers', async () => {
-      const bodyStr = openedPRPayloadString;
-      const res = await sendWebhook(openedPRPayload, sign(bodyStr));
-
+    it('should include X-Request-ID in response headers', async () => {
+      const res = await sendWebhook(openedPRPayload, sign(openedPRPayloadString));
       expect(res.headers['x-request-id']).toBeDefined();
     });
 
-    it('should return 200 (not 422) for unsupported action like "closed"', async () => {
+    it('should return 200 for unsupported action "closed" (no retry)', async () => {
       const bodyStr = JSON.stringify(closedPRPayload);
       const res = await sendWebhook(closedPRPayload, sign(bodyStr));
-
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.message).toContain('closed');
@@ -144,76 +138,69 @@ describe('POST /api/webhooks/github', () => {
         .set('Content-Type', 'application/json')
         .set('X-Hub-Signature-256', sign(bodyStr))
         .set('X-GitHub-Event', 'push')
+        .set('X-GitHub-Delivery', uid())
         .send(bodyStr);
-
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
   });
 
   describe('❌ Signature validation failures', () => {
-    it('should return 403 when x-hub-signature-256 header is missing', async () => {
+    it('should return 403 when signature header is missing', async () => {
       const res = await request(app)
         .post('/api/webhooks/github')
         .set('Content-Type', 'application/json')
         .set('X-GitHub-Event', 'pull_request')
+        .set('X-GitHub-Delivery', uid())
         .send(openedPRPayloadString);
-
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('WEBHOOK_SIGNATURE_INVALID');
     });
 
-    it('should return 403 for an incorrect signature', async () => {
-      const wrongSig = sign('different-body');
-      const res = await sendWebhook(openedPRPayload, wrongSig);
-
+    it('should return 403 for incorrect signature', async () => {
+      const res = await sendWebhook(openedPRPayload, sign('different-body-entirely'));
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
     });
 
-    it('should return 403 for a completely fake signature', async () => {
+    it('should return 403 for fake signature', async () => {
       const res = await sendWebhook(openedPRPayload, 'sha256=fakesignature');
-
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
     });
 
-    it('should return 403 for SHA-1 format signature (legacy)', async () => {
+    it('should return 403 for SHA-1 format (legacy) signature', async () => {
       const sha1Sig = `sha1=${crypto.createHmac('sha1', TEST_SECRET).update(openedPRPayloadString).digest('hex')}`;
       const res = await sendWebhook(openedPRPayload, sha1Sig);
-
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
     });
 
-    it('should NOT leak the secret in the error response', async () => {
+    it('should NOT leak the webhook secret in error response', async () => {
       const res = await sendWebhook(openedPRPayload, 'sha256=bad');
       const responseText = JSON.stringify(res.body);
-
       expect(responseText).not.toContain(TEST_SECRET);
       expect(responseText).not.toContain('HMAC');
     });
   });
 
   describe('❌ Malformed payload handling', () => {
-    it('should return 400 for invalid JSON', async () => {
-      const invalidJson = 'not-valid-json{';
+    it('should return 400 for invalid JSON body', async () => {
+      const invalidJson = 'not-valid-json{{{';
       const res = await request(app)
         .post('/api/webhooks/github')
         .set('Content-Type', 'application/json')
         .set('X-Hub-Signature-256', sign(invalidJson))
         .set('X-GitHub-Event', 'pull_request')
+        .set('X-GitHub-Delivery', uid())
         .send(invalidJson);
-
-      // Express json parser returns 400 for invalid JSON
       expect(res.status).toBe(400);
     });
 
     it('should return 400 for missing required payload fields', async () => {
       const bodyStr = JSON.stringify(invalidPayload);
       const res = await sendWebhook(invalidPayload, sign(bodyStr));
-
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('WEBHOOK_PAYLOAD_INVALID');
@@ -225,13 +212,54 @@ describe('POST /api/webhooks/github', () => {
         .set('Content-Type', 'application/json')
         .set('X-Hub-Signature-256', sign(''))
         .set('X-GitHub-Event', 'pull_request')
+        .set('X-GitHub-Delivery', uid())
         .send('');
-
       expect(res.status).toBe(400);
+    });
+
+    it('should return 400 for non-JSON content-type', async () => {
+      const bodyStr = openedPRPayloadString;
+      const res = await request(app)
+        .post('/api/webhooks/github')
+        .set('Content-Type', 'text/plain')
+        .set('X-Hub-Signature-256', sign(bodyStr))
+        .set('X-GitHub-Event', 'pull_request')
+        .set('X-GitHub-Delivery', uid())
+        .send(bodyStr);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_CONTENT_TYPE');
     });
   });
 
-  describe('🏥 Health check endpoint', () => {
+  describe('🔒 Replay protection', () => {
+    it('should silently deduplicate same delivery ID', async () => {
+      const bodyStr = openedPRPayloadString;
+      const sig = sign(bodyStr);
+      const deliveryId = `replay-test-${Date.now()}`;
+
+      const res1 = await request(app)
+        .post('/api/webhooks/github')
+        .set('Content-Type', 'application/json')
+        .set('X-Hub-Signature-256', sig)
+        .set('X-GitHub-Event', 'pull_request')
+        .set('X-GitHub-Delivery', deliveryId)
+        .send(bodyStr);
+      expect(res1.status).toBe(200);
+      expect(res1.body.eventId).toBeDefined();
+
+      const res2 = await request(app)
+        .post('/api/webhooks/github')
+        .set('Content-Type', 'application/json')
+        .set('X-Hub-Signature-256', sig)
+        .set('X-GitHub-Event', 'pull_request')
+        .set('X-GitHub-Delivery', deliveryId)
+        .send(bodyStr);
+      expect(res2.status).toBe(200);
+      expect(res2.body.message).toContain('Duplicate');
+    });
+  });
+
+  describe('🏥 Health check', () => {
     it('should return 200 at /health', async () => {
       const res = await request(app).get('/health');
       expect(res.status).toBe(200);

@@ -1,13 +1,8 @@
 /**
  * @file src/lib/errors.ts
  * @description Centralized application error hierarchy.
- *
- * All custom errors extend AppError so the global error handler
- * can distinguish operational errors (expected, safe to report)
- * from programmer errors (unexpected, should alert).
  */
 
-/** HTTP status codes used by this application */
 export enum HttpStatus {
   OK = 200,
   CREATED = 201,
@@ -19,10 +14,7 @@ export enum HttpStatus {
   INTERNAL_SERVER_ERROR = 500,
 }
 
-/**
- * Base class for all operational application errors.
- * Operational = predictable, safe to surface to the client.
- */
+/** Base class for all operational application errors. */
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly isOperational: boolean;
@@ -34,22 +26,16 @@ export class AppError extends Error {
     this.statusCode = statusCode;
     this.isOperational = true;
     this.code = code;
-
-    // Restore prototype chain (required when extending built-in classes in TS)
     Object.setPrototypeOf(this, new.target.prototype);
-
-    // Capture stack trace, excluding the constructor itself
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
-// ─── Webhook Errors ──────────────────────────────────────────────────────────
+// ─── Webhook Errors ───────────────────────────────────────────────────────────
 
 /**
- * Thrown when the x-hub-signature-256 header is missing or invalid.
- *
- * Security note: We return 403 (not 401) and a generic message
- * to avoid leaking information about signature format/algorithm.
+ * Thrown when x-hub-signature-256 is missing or invalid.
+ * Returns 403 with a generic message — never leaks which check failed.
  */
 export class WebhookSignatureError extends AppError {
   constructor(message = 'Invalid or missing webhook signature') {
@@ -57,9 +43,7 @@ export class WebhookSignatureError extends AppError {
   }
 }
 
-/**
- * Thrown when the webhook payload cannot be parsed or is structurally invalid.
- */
+/** Thrown when the webhook payload fails Zod validation. */
 export class WebhookPayloadError extends AppError {
   constructor(message = 'Invalid webhook payload') {
     super(message, HttpStatus.BAD_REQUEST, 'WEBHOOK_PAYLOAD_INVALID');
@@ -68,63 +52,48 @@ export class WebhookPayloadError extends AppError {
 
 /**
  * Thrown for unsupported GitHub event types or actions.
+ * Returns 200 so GitHub does NOT retry the event.
  */
 export class WebhookEventNotSupportedError extends AppError {
   constructor(eventType: string, action?: string) {
     const detail = action ? `${eventType}:${action}` : eventType;
-    super(
-      `Unsupported webhook event: ${detail}`,
-      HttpStatus.OK, // Return 200 so GitHub doesn't retry unsupported events
-      'WEBHOOK_EVENT_NOT_SUPPORTED',
-    );
+    super(`Unsupported webhook event: ${detail}`, HttpStatus.OK, 'WEBHOOK_EVENT_NOT_SUPPORTED');
   }
 }
 
-// ─── Validation Errors ───────────────────────────────────────────────────────
+// ─── Validation Errors ────────────────────────────────────────────────────────
 
-/**
- * Thrown when request data fails Zod validation.
- */
 export class ValidationError extends AppError {
   public readonly details: unknown;
-
   constructor(message: string, details?: unknown) {
     super(message, HttpStatus.BAD_REQUEST, 'VALIDATION_ERROR');
     this.details = details;
   }
 }
 
-// ─── Authentication Errors ───────────────────────────────────────────────────
+// ─── Auth Errors ──────────────────────────────────────────────────────────────
 
-/**
- * Thrown when authentication fails (e.g. invalid JWT, failed OAuth).
- */
+/** Thrown when authentication fails (invalid token, missing session, OAuth error). */
 export class AuthError extends AppError {
   constructor(message = 'Authentication failed') {
     super(message, HttpStatus.UNAUTHORIZED, 'AUTH_ERROR');
   }
 }
 
-// ─── Database Errors ─────────────────────────────────────────────────────────
+// ─── Database Errors ──────────────────────────────────────────────────────────
 
-/**
- * Thrown when a database operation fails.
- * The original error is NOT forwarded to the client.
- */
 export class DatabaseError extends AppError {
   constructor(message = 'Database operation failed') {
     super(message, HttpStatus.INTERNAL_SERVER_ERROR, 'DATABASE_ERROR');
   }
 }
 
-// ─── Type Guards ─────────────────────────────────────────────────────────────
+// ─── Type Guards ──────────────────────────────────────────────────────────────
 
-/** Narrows an unknown value to AppError */
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
 }
 
-/** Narrows an unknown value to a standard Error */
 export function isError(error: unknown): error is Error {
   return error instanceof Error;
 }

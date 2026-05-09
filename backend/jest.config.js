@@ -21,4 +21,7 @@ module.exports = {
     '!src/**/*.d.ts',
   ],
   testTimeout: 10000,
+  moduleNameMapper: {
+    '^arctic$': '<rootDir>/tests/__mocks__/arctic.ts'
+  },
 };

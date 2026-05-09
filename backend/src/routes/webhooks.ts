@@ -9,6 +9,7 @@
 import { Router } from 'express';
 import { rawBodyJsonParser, requireBody } from '../middlewares/rawBody';
 import { webhookRateLimiter } from '../middlewares/rateLimiter';
+import { ipWhitelistMiddleware } from '../middlewares/ipWhitelist';
 import { handleGithubWebhook } from '../controllers/webhookController';
 
 const router = Router();
@@ -26,6 +27,7 @@ router.post(
   '/github',
   rawBodyJsonParser(),
   requireBody,
+  ipWhitelistMiddleware,
   webhookRateLimiter,
   handleGithubWebhook,
 );

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import type React from 'react';
 import { motion } from 'framer-motion';
+import type { MotionProps } from 'framer-motion';
 import {
   Shield,
   Mail,
@@ -23,7 +25,7 @@ interface StatBadgeProps {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const fadeUp = (delay = 0) => ({
+const fadeUp = (delay = 0): MotionProps => ({
   initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.7, ease: 'easeOut', delay },

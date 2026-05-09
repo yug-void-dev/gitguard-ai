@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Cpu, GitPullRequest, Zap, ShieldCheck } from 'lucide-react';
 import ParticleBackground from './components/ParticleBackground';

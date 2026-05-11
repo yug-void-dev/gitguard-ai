@@ -13,6 +13,8 @@ import { createApp } from './app';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { env } from './config/env';
 import { logger } from './lib/logger';
+import { startWorker, stopWorker } from './queue';
+import { closeRedisConnection } from './config/redis-config';
 
 const PORT = env.PORT;
 
@@ -20,10 +22,13 @@ async function bootstrap(): Promise<void> {
   // ── 1. Connect to database ────────────────────────────────────────────
   await connectDatabase();
 
-  // ── 2. Create Express app ─────────────────────────────────────────────
+  // ── 2. Start BullMQ review worker ────────────────────────────────────
+  startWorker();
+
+  // ── 3. Create Express app ─────────────────────────────────────────────
   const app = createApp();
 
-  // ── 3. Start listening ────────────────────────────────────────────────
+  // ── 4. Start listening ────────────────────────────────────────────────
   const server = app.listen(PORT, () => {
     logger.info(
       {
@@ -44,6 +49,12 @@ async function bootstrap(): Promise<void> {
     server.close(async () => {
       logger.info('HTTP server closed');
 
+      // Stop the BullMQ worker (waits for in-flight jobs to finish)
+      await stopWorker();
+
+      // Close Redis connection (after worker is stopped)
+      await closeRedisConnection();
+
       // Close database connection
       await disconnectDatabase();
 
@@ -51,11 +62,11 @@ async function bootstrap(): Promise<void> {
       process.exit(0);
     });
 
-    // Force exit after 10 seconds if graceful shutdown stalls
+    // Force exit after 15 seconds if graceful shutdown stalls
     setTimeout(() => {
       logger.error('Forced shutdown after timeout');
       process.exit(1);
-    }, 10_000);
+    }, 15_000);
   };
 
   process.on('SIGTERM', () => {

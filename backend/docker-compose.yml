@@ -29,8 +29,13 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       WEBHOOK_RATE_LIMIT_MAX: ${WEBHOOK_RATE_LIMIT_MAX:-30}
       WEBHOOK_RATE_LIMIT_WINDOW_MS: ${WEBHOOK_RATE_LIMIT_WINDOW_MS:-60000}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     depends_on:
       mongo:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - gitguard-network
@@ -86,11 +91,36 @@ services:
     profiles:
       - dev  # Only start with: docker compose --profile dev up
 
+  # ── Redis (BullMQ queue backend) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gitguard-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - gitguard-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
 # ── Volumes ────────────────────────────────────────────────
 volumes:
   mongo-data:
     driver: local
   mongo-config:
+    driver: local
+  redis-data:
     driver: local
 
 # ── Networks ───────────────────────────────────────────────

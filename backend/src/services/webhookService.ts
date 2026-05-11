@@ -2,16 +2,19 @@
  * @file src/services/webhookService.ts
  * @description Core service for processing validated pull request events.
  *
- * This is the main business logic layer. In Week 2+ this service will:
- * - Fetch the PR diff via Octokit
- * - Queue the review job in BullMQ
- * - Trigger the AI review pipeline
- *
- * For Week 1, it validates and persists the event for audit/history.
+ * Week 2 update: wires the BullMQ review queue and contextBuilder.
+ * Pipeline on each received PR event:
+ *   1. Skip draft PRs (configurable)
+ *   2. Build PRContext (contextBuilder)
+ *   3. Enqueue ReviewJobPayload → BullMQ review-pr queue
+ *   4. The queue worker handles all AI processing asynchronously
  */
 
 import { logger } from '../lib/logger';
 import { PullRequestEvent } from '../types/github';
+import { buildPRContext } from '../ai/contextBuilder';
+import { enqueueReviewJob } from '../queue/reviewQueue';
+import { ReviewJobPayload } from '../types/analysis';
 
 /** Result returned to the controller after processing */
 export interface WebhookProcessingResult {
@@ -25,11 +28,11 @@ export interface WebhookProcessingResult {
 /**
  * Processes a validated PullRequestEvent.
  *
- * Currently: logs and returns event metadata.
- * Week 2+: will enqueue AI review job via BullMQ.
+ * Builds a rich PRContext and enqueues an async AI review job.
+ * Returns immediately — analysis happens asynchronously in the Worker.
  *
- * @param event - The clean internal PullRequestEvent
- * @returns Processing result with event metadata
+ * @param event - The clean internal PullRequestEvent from the webhook pipeline
+ * @returns Processing result with event metadata and queue confirmation
  */
 export async function processWebhookEvent(
   event: PullRequestEvent,
@@ -51,27 +54,48 @@ export async function processWebhookEvent(
     'Processing pull request event',
   );
 
-  // ── Draft PR handling ─────────────────────────────────────────────────
-  // Optionally skip draft PRs (configurable per repo in Week 2)
+  // ── Draft PR guard ────────────────────────────────────────────────────
   if (event.pullRequest.isDraft) {
     reqLogger.info(
       { eventId: event.eventId },
-      'Pull request is a draft — skipping AI review (configurable)',
+      'Pull request is a draft — skipping AI review',
     );
+
+    return {
+      eventId: event.eventId,
+      action: event.action,
+      repositoryFullName: event.repository.fullName,
+      pullRequestNumber: event.pullRequest.number,
+      message: `Draft PR #${event.pullRequest.number} skipped`,
+    };
   }
 
-  // ── Week 2+ TODO: Enqueue review job ─────────────────────────────────
-  // await reviewQueue.add('review-pr', {
-  //   eventId: event.eventId,
-  //   repositoryFullName: event.repository.fullName,
-  //   prNumber: event.pullRequest.number,
-  //   diffUrl: event.pullRequest.diffUrl,
-  //   headSha: event.pullRequest.headSha,
-  // });
+  // ── Build PRContext ────────────────────────────────────────────────────
+  const context = buildPRContext(event);
+
+  reqLogger.info(
+    { linkedIssues: context.linkedIssues, language: context.language },
+    'PR context assembled',
+  );
+
+  // ── Enqueue review job ────────────────────────────────────────────────
+  const payload: ReviewJobPayload = {
+    eventId: event.eventId,
+    repositoryFullName: event.repository.fullName,
+    ownerLogin: event.repository.ownerLogin,
+    repoName: event.repository.name,
+    prNumber: event.pullRequest.number,
+    headSha: event.pullRequest.headSha,
+    diffUrl: event.pullRequest.diffUrl,
+    context,
+    enqueuedAt: new Date().toISOString(),
+  };
+
+  await enqueueReviewJob(payload, event.eventId);
 
   reqLogger.info(
     { eventId: event.eventId },
-    '✅  Webhook event processed successfully',
+    '✅ Webhook event processed — review job enqueued',
   );
 
   return {
@@ -79,6 +103,6 @@ export async function processWebhookEvent(
     action: event.action,
     repositoryFullName: event.repository.fullName,
     pullRequestNumber: event.pullRequest.number,
-    message: `Pull request #${event.pullRequest.number} (${event.action}) queued for review`,
+    message: `Pull request #${event.pullRequest.number} (${event.action}) queued for AI review`,
   };
 }

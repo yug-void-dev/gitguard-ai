@@ -52,6 +52,18 @@ const envSchema = z.object({
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
+
+  // ── Redis (BullMQ queue) ──────────────────────────────────────────────
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z
+    .string()
+    .default('6379')
+    .transform((v) => parseInt(v, 10))
+    .refine((v) => !isNaN(v) && v > 0 && v < 65536, {
+      message: 'REDIS_PORT must be a valid port number',
+    }),
+  /** Optional — leave empty for no-auth Redis (dev/local) */
+  REDIS_PASSWORD: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

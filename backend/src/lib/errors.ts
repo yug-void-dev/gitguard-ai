@@ -88,6 +88,44 @@ export class DatabaseError extends AppError {
   }
 }
 
+// ─── Queue Errors ───────────────────────────────────────────────────
+
+/** Thrown when a BullMQ queue operation fails (enqueue, connection, etc.) */
+export class QueueError extends AppError {
+  constructor(message = 'Queue operation failed') {
+    super(message, HttpStatus.INTERNAL_SERVER_ERROR, 'QUEUE_ERROR');
+  }
+}
+
+// ─── AI / LLM Errors ─────────────────────────────────────────────────
+
+/**
+ * Thrown when an LLM API call fails after all retries are exhausted.
+ * Wraps the underlying network/HTTP error.
+ */
+export class LLMError extends AppError {
+  public readonly provider: string;
+  constructor(provider: string, message?: string) {
+    super(
+      message ?? `LLM API call to ${provider} failed after retries`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      'LLM_ERROR',
+    );
+    this.provider = provider;
+  }
+}
+
+/** Thrown when prompt injection is detected in a diff */
+export class PromptInjectionError extends AppError {
+  constructor(patternsRemoved: number) {
+    super(
+      `Prompt injection detected: ${patternsRemoved} pattern(s) removed`,
+      HttpStatus.BAD_REQUEST,
+      'PROMPT_INJECTION_DETECTED',
+    );
+  }
+}
+
 // ─── Type Guards ──────────────────────────────────────────────────────────────
 
 export function isAppError(error: unknown): error is AppError {

@@ -138,6 +138,109 @@ export const githubCallback = async (
 };
 
 /**
+ * Registers a new user with email and password.
+ */
+export const register = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { login, email, password } = req.body;
+
+  try {
+    const existingUser = await User.findOne({ $or: [{ email }, { login }] });
+    if (existingUser) {
+      next(new AuthError('User with this email or username already exists'));
+      return;
+    }
+
+    const user = await User.create({
+      login,
+      email,
+      password,
+    });
+
+    const token = jwt.sign(
+      { id: user._id },
+      env.JWT_SECRET,
+      { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user._id,
+        login: user.login,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Authenticates a user with email/username and password.
+ */
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { login, password } = req.body;
+
+  try {
+    const user = await User.findOne({ 
+      $or: [{ email: login }, { login }] 
+    }).select('+password');
+
+    if (!user || !user.password) {
+      next(new AuthError('Invalid credentials'));
+      return;
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      next(new AuthError('Invalid credentials'));
+      return;
+    }
+
+    const token = jwt.sign(
+      { id: user._id },
+      env.JWT_SECRET,
+      { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        login: user.login,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Returns the currently authenticated user's profile.
  */
 export const getMe = async (
@@ -147,7 +250,7 @@ export const getMe = async (
 ): Promise<void> => {
   try {
     const reqWithUser = req as Request & { user: { id: string } };
-    const user = await User.findById(reqWithUser.user.id).select('-accessToken');
+    const user = await User.findById(reqWithUser.user.id);
     if (!user) {
       next(new AuthError('User not found'));
       return;

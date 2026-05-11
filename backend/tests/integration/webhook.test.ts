@@ -17,6 +17,12 @@ jest.mock('../../src/models/AuditLog', () => ({
   AuditLog: { create: jest.fn().mockResolvedValue({}) },
 }));
 
+jest.mock('../../src/queue/reviewQueue', () => ({
+  enqueueReviewJob: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+  getReviewQueue: jest.fn(),
+  REVIEW_QUEUE_NAME: 'review-pr',
+}));
+
 // Mock arctic (pure ESM — cannot be loaded by ts-jest without full ESM setup)
 jest.mock('arctic', () => ({
   GitHub: jest.fn().mockImplementation(() => ({

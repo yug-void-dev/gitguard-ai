@@ -22,6 +22,18 @@ router.get('/github', authController.githubLogin);
 router.get('/github/callback', authController.githubCallback);
 
 /**
+ * @route   POST /api/auth/register
+ * @desc    Register new user
+ */
+router.post('/register', authController.register);
+
+/**
+ * @route   POST /api/auth/login
+ * @desc    Login user
+ */
+router.post('/login', authController.login);
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get current user profile (Protected)
  */

@@ -17,6 +17,7 @@ import cookieParser from 'cookie-parser';
 import webhookRoutes from './routes/webhooks';
 import healthRoutes from './routes/health';
 import authRoutes from './routes/authRoutes';
+import queueRoutes from './routes/queueRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -85,6 +86,9 @@ export function createApp(): Application {
 
   // Auth routes (Apply JSON parser only here to avoid conflict with webhooks)
   app.use('/api/auth', express.json(), authRoutes);
+
+  // Queue metrics route (authenticated)
+  app.use('/api/queue', express.json(), queueRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

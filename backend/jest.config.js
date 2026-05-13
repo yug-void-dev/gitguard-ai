@@ -4,6 +4,8 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
+  // Run setup BEFORE each test file — sets all env vars
+  setupFiles: ['<rootDir>/tests/helpers/setup.ts'],
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
@@ -15,7 +17,6 @@ module.exports = {
       },
     ],
   },
-  // arctic and other ESM packages must be transformed
   transformIgnorePatterns: [
     '/node_modules/(?!(arctic)/)',
   ],

@@ -196,6 +196,9 @@ export interface ReviewJobPayload {
   /** Raw PR diff URL (from GitHub) */
   diffUrl: string;
 
+  /** Optional raw diff content (used for manual testing/triggers) */
+  rawDiff?: string;
+
   /** Assembled PR context */
   context: PRContext;
 

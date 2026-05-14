@@ -30,12 +30,13 @@ import { Worker, Job } from 'bullmq';
 import { getRedisConnection } from '../config/redis-config';
 import { REVIEW_QUEUE_NAME } from './reviewQueue';
 import { measureStage } from './queueMetrics';
-import { splitAndSanitiseDiff } from '../ai/promptSanitizer';
 import { enrichFindings } from '../ai/suggestionEnricher';
 import { scanDiffForVulnerabilities } from '../ai/vulnerabilityScanner';
 import { Review } from '../models/Review';
 import { logger } from '../lib/logger';
 import { ReviewJobPayload, AnalysisResult, AnalysisFinding } from '../types/analysis';
+import { processDiff } from '../github/diffProcessor';
+import { routeToLLM } from '../llm/llmRouter';
 import axios from 'axios';
 import pino from 'pino';
 
@@ -124,35 +125,57 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
 
   log.info('📥 Processing review job');
 
-  // ── Stage 1: Fetch the raw diff ──────────────────────────────────────
+  // ── Stage 1: Fetch or Use raw diff ──────────────────────────────────
   const rawDiff = await measureStage(
     'fetch-diff',
     jobId,
     repositoryFullName,
-    () => fetchDiff(diffUrl, log),
+    async () => {
+      if (job.data.rawDiff) {
+        log.info('Using rawDiff provided in job payload');
+        return job.data.rawDiff;
+      }
+      return fetchDiff(diffUrl, log);
+    },
   );
 
-  // ── Stage 2: Sanitise and chunk the diff ─────────────────────────────
-  const diffChunks = await measureStage(
-    'sanitise-diff',
+  // ── Stage 2: Process and chunk the diff ─────────────────────────────
+  const processedDiff = await measureStage(
+    'process-diff',
     jobId,
     repositoryFullName,
-    async () => splitAndSanitiseDiff(rawDiff, eventId),
+    async () => processDiff(rawDiff, context, eventId),
   );
 
-  log.info({ chunkCount: diffChunks.length }, 'Diff sanitised and split');
+  log.info(
+    {
+      fileCount: processedDiff.allFiles.length,
+      chunkCount: processedDiff.chunks.length,
+    },
+    'Diff processed and chunked',
+  );
 
-  // ── Stage 3: LLM Analysis (Teammate B integration point) ─────────────
-  // TODO: Replace this stub with Teammate B's llmRouter when merged.
-  // The stub returns an empty findings array so the pipeline runs end-to-end.
-  const rawFindings = await measureStage(
+  // ── Stage 3: LLM Analysis ───────────────────────────────────────────
+  const llmResult = await measureStage(
     'llm-analysis',
     jobId,
     repositoryFullName,
-    async () => callLLMRouter(diffChunks, context, eventId, log),
+    async () => routeToLLM({
+      chunks: processedDiff.chunks,
+      context,
+      eventId,
+    }),
   );
 
-  log.info({ findingsCount: rawFindings.length }, 'LLM analysis complete');
+  const rawFindings = llmResult.findings;
+  log.info(
+    {
+      findingsCount: rawFindings.length,
+      model: llmResult.modelUsed,
+      latency: llmResult.latencyMs,
+    },
+    'LLM analysis complete',
+  );
 
   // ── Stage 4: Enrich findings with test + refactoring suggestions ──────
   const enrichedFindings = await measureStage(
@@ -252,31 +275,6 @@ async function fetchDiff(
   return response.data;
 }
 
-/**
- * Stub for Teammate B's LLM router.
- *
- * TODO: Replace with:
- *   import { routeToLLM } from '../ai/llmRouter';
- *   return routeToLLM(diffChunks, context, eventId);
- *
- * The stub returns an empty array so the full pipeline is testable
- * without Teammate B's code being merged first.
- */
-async function callLLMRouter(
-  diffChunks: string[],
-  _context: ReviewJobPayload['context'],
-  eventId: string,
-  log: pino.Logger,
-): Promise<AnalysisFinding[]> {
-  log.info(
-    { chunkCount: diffChunks.length, eventId },
-    // eslint-disable-next-line max-len
-    '🔌 [STUB] LLM router called — wire Teammate B\'s llmRouter here (src/ai/llmRouter.ts)',
-  );
-
-  // Return empty findings — pipeline runs end-to-end without Teammate B
-  return [];
-}
 
 /** Computes aggregate metrics from enriched findings */
 function computeMetrics(

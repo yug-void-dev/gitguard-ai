@@ -7,8 +7,6 @@ import { useAuth } from '../hooks/useAuth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-import type { User, LoginCredentials, RegisterCredentials } from '../types/auth.types';
-
 interface FormData {
   login: string;
   email: string;
@@ -374,10 +372,10 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({ 
-    login: localStorage.getItem('gg_remembered_login') || '', 
-    email: '', 
-    password: '', 
+  const [formData, setFormData] = useState<FormData>({
+    login: localStorage.getItem('gg_remembered_login') || '',
+    email: '',
+    password: '',
     confirmPassword: '',
     rememberMe: !!localStorage.getItem('gg_remembered_login')
   });
@@ -449,7 +447,7 @@ const LoginPage: React.FC = () => {
     try {
       if (tab === 'login') {
         await login({ login: formData.login, password: formData.password });
-        
+
         if (formData.rememberMe) {
           localStorage.setItem('gg_remembered_login', formData.login);
         } else {
@@ -547,8 +545,8 @@ const LoginPage: React.FC = () => {
               <h1>{tab==='login' ? 'Welcome back' : 'Join GitGuard AI'}</h1>
               <p>{tab==='login' ? '> access your sentinel dashboard' : '> start protecting your codebase today'}</p>
               {error && (
-                <div style={{ 
-                  marginTop: 12, padding: '8px 12px', borderRadius: 6, 
+                <div style={{
+                  marginTop: 12, padding: '8px 12px', borderRadius: 6,
                   background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
                   color: '#f87171', fontSize: 11, fontFamily: "'JetBrains Mono', monospace"
                 }}>
@@ -608,10 +606,10 @@ const LoginPage: React.FC = () => {
               {tab==='login' && (
                 <div className="gg-row">
                   <label className="gg-rem">
-                    <input 
-                      type="checkbox" 
-                      name="rememberMe" 
-                      checked={formData.rememberMe} 
+                    <input
+                      type="checkbox"
+                      name="rememberMe"
+                      checked={formData.rememberMe}
                       onChange={handleChange}
                     />
                     <span>Remember me</span>

@@ -1,10 +1,6 @@
 /**
  * @file src/github/octokitClient.ts
- * @description Authenticated Octokit REST client factory.
- *
- * Creates authenticated Octokit instances for fetching PR diffs and file
- * metadata directly from the GitHub API. In Week 3, this will be replaced
- * with GitHub App installation tokens per-repository.
+ * @description Authenticated Octokit REST client factory + diff/file fetchers.
  */
 
 import { Octokit } from '@octokit/rest';
@@ -19,10 +15,7 @@ export interface PullRequestFile {
   patch?: string;
 }
 
-/**
- * Creates an authenticated Octokit client.
- * @param token - GitHub PAT or installation token (Week 3+)
- */
+/** Creates an authenticated Octokit client. Week 3+: swap for GitHub App token. */
 export function createOctokitClient(token: string): Octokit {
   return new Octokit({
     auth: token,
@@ -37,11 +30,8 @@ export function createOctokitClient(token: string): Octokit {
 }
 
 /**
- * Fetches the raw unified diff for a pull request via GitHub API.
- *
- * Uses `mediaType: { format: 'diff' }` which returns the raw patch bytes
- * directly — this is the format HMAC-signed by GitHub, so it's the
- * canonical representation of the diff.
+ * Fetches the raw unified diff for a pull request.
+ * Uses mediaType: { format: 'diff' } to receive raw patch bytes directly.
  */
 export async function fetchRawDiff(
   octokit: Octokit,
@@ -58,20 +48,19 @@ export async function fetchRawDiff(
     mediaType: { format: 'diff' },
   });
 
-  // With mediaType.format='diff', response.data is the raw diff string
   const rawDiff = response.data as unknown as string;
 
   if (!rawDiff || typeof rawDiff !== 'string') {
-    throw new Error(`No diff returned for PR #${prNumber} — repo may be empty or PR has no changes`);
+    throw new Error(`No diff returned for PR #${prNumber} — repo may be empty`);
   }
 
-  logger.info({ owner, repo, prNumber, diffBytes: rawDiff.length }, 'PR diff fetched successfully');
+  logger.info({ owner, repo, prNumber, diffBytes: rawDiff.length }, 'PR diff fetched');
   return rawDiff;
 }
 
 /**
- * Fetches file-level metadata for a pull request (up to 100 files).
- * Used to enrich diff chunks with status/additions/deletions per file.
+ * Fetches per-file metadata for a PR (up to 100 files).
+ * Used to enrich diff chunks with status/additions/deletions.
  */
 export async function fetchPRFiles(
   octokit: Octokit,

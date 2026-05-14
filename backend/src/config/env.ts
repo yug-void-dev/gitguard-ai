@@ -10,7 +10,7 @@ dotenv.config();
 
 const envSchema = z.object({
   PORT: z.string().default('3001').transform((val) => parseInt(val, 10))
-    .refine((val) => !isNaN(val) && val > 0 && val < 65536, { message: 'PORT must be 1–65535' }),
+    .refine((val) => !isNaN(val) && val > 0 && val < 65536, { message: 'PORT must be 1-65535' }),
   NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
 
   GITHUB_WEBHOOK_SECRET: z.string().min(16, 'GITHUB_WEBHOOK_SECRET must be at least 16 characters'),
@@ -29,18 +29,18 @@ const envSchema = z.object({
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
 
-  // ── Redis (BullMQ) ───────────────────────────────────────────────────────
+  // Redis (BullMQ)
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.string().default('6379').transform((v) => parseInt(v, 10))
     .refine((v) => !isNaN(v) && v > 0 && v < 65536, { message: 'REDIS_PORT must be a valid port' }),
   REDIS_PASSWORD: z.string().default(''),
 
-  // ── LLM API Keys (all optional — fallback handles missing keys) ──────────
+  // LLM API Keys — all optional, fallback handles missing keys
   GEMINI_API_KEY: z.string().optional().default(''),
   GROQ_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
 
-  // ── LLM Routing ──────────────────────────────────────────────────────────
+  // LLM Routing
   LLM_PRIMARY: z.enum(['gemini', 'groq', 'anthropic']).default('gemini'),
   LLM_MAX_TOKENS: z.string().default('8192').transform((v) => parseInt(v, 10)),
   DIFF_MAX_CHUNK_BYTES: z.string().default('102400').transform((v) => parseInt(v, 10)),
@@ -51,7 +51,7 @@ export type Env = z.infer<typeof envSchema>;
 function validateEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
-    process.stderr.write('❌  Invalid environment configuration:\n\n');
+    process.stderr.write('Invalid environment configuration:\n\n');
     result.error.issues.forEach((issue) => {
       process.stderr.write(`  • ${issue.path.join('.')}: ${issue.message}\n`);
     });

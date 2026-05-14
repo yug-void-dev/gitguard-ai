@@ -1,12 +1,6 @@
 /**
  * @file src/github/diffFetcher.ts
- * @description DiffFetcher service — orchestrates diff retrieval.
- *
- * Wraps the Octokit client with retry logic, token management, and
- * structured logging. This is the entry point for the diff pipeline.
- *
- * Used by the BullMQ worker (reviewWorker.ts) to replace the bare
- * axios.get() call with an authenticated, retried Octokit fetch.
+ * @description DiffFetcher service — authenticated PR diff retrieval with retry.
  */
 
 import { Octokit } from '@octokit/rest';
@@ -15,30 +9,17 @@ import { withRetry } from '../ai/retryStrategy';
 import { logger } from '../lib/logger';
 
 export interface FetchedDiff {
-  /** Raw unified diff string */
   rawDiff: string;
-  /** Per-file metadata */
   files: PullRequestFile[];
-  /** Owner login */
   owner: string;
-  /** Repo name */
   repo: string;
-  /** PR number */
   prNumber: number;
-  /** Diff size in bytes */
   diffBytes: number;
 }
 
 /**
  * Fetches the complete PR diff using an authenticated Octokit client.
- *
- * Includes retry logic (3 attempts, exponential back-off) for transient errors.
- *
- * @param token     - GitHub PAT or installation token
- * @param owner     - Repository owner
- * @param repo      - Repository name
- * @param prNumber  - Pull request number
- * @param eventId   - Correlation ID for logging
+ * Retries up to 3 times with exponential back-off on transient errors.
  */
 export async function fetchDiff(
   token: string,
@@ -63,12 +44,5 @@ export async function fetchDiff(
 
   log.info({ diffBytes: rawDiff.length, fileCount: files.length }, 'Diff fetch complete');
 
-  return {
-    rawDiff,
-    files,
-    owner,
-    repo,
-    prNumber,
-    diffBytes: Buffer.byteLength(rawDiff, 'utf8'),
-  };
+  return { rawDiff, files, owner, repo, prNumber, diffBytes: Buffer.byteLength(rawDiff, 'utf8') };
 }

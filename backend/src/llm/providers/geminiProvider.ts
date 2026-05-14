@@ -1,9 +1,6 @@
 /**
  * @file src/llm/providers/geminiProvider.ts
  * @description Google Gemini 1.5 Flash provider.
- *
- * Gemini 1.5 Flash: 1M token context, fast, cost-efficient.
- * Best for large diffs and complex analysis.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -19,10 +16,6 @@ function getClient(): GoogleGenerativeAI {
   return _client;
 }
 
-/**
- * Calls Gemini 1.5 Flash with system + user prompts.
- * Returns raw text + token counts for cost tracking.
- */
 export async function callGemini(
   systemPrompt: string,
   userPrompt: string,
@@ -35,19 +28,18 @@ export async function callGemini(
     systemInstruction: systemPrompt,
     generationConfig: {
       maxOutputTokens: options.maxTokens ?? env.LLM_MAX_TOKENS,
-      temperature:     options.temperature ?? 0.1,   // Low = deterministic JSON
-      responseMimeType: 'application/json',           // Ask Gemini for JSON directly
+      temperature:     options.temperature ?? 0.1,
+      responseMimeType: 'application/json',
     },
   });
 
   logger.debug({ model: 'gemini-1.5-flash', promptChars: userPrompt.length }, 'Calling Gemini');
-
-  const result   = await model.generateContent(userPrompt);
+  const result = await model.generateContent(userPrompt);
   const response = result.response;
-  const usage    = response.usageMetadata;
+  const usage = response.usageMetadata;
 
   return {
-    text:             response.text(),
+    text: response.text(),
     promptTokens:     usage?.promptTokenCount,
     completionTokens: usage?.candidatesTokenCount,
   };

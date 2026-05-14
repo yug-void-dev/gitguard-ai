@@ -1,8 +1,11 @@
 version: '3.9'
 
 # ============================================================
-# GitGuard AI — Docker Compose (Week 2 Updated)
-# Adds: Redis for BullMQ queue
+# GitGuard AI — Docker Compose
+# ============================================================
+# Usage:
+#   Development:  docker compose up
+#   Production:   docker compose -f docker-compose.yml up -d
 # ============================================================
 
 services:
@@ -20,27 +23,15 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:?required}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?required}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?required}
-      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:3001/api/auth/github/callback}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:?GITHUB_WEBHOOK_SECRET is required}
       MONGODB_URI: mongodb://mongo:27017/gitguard
-      JWT_SECRET: ${JWT_SECRET:?required}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       WEBHOOK_RATE_LIMIT_MAX: ${WEBHOOK_RATE_LIMIT_MAX:-30}
       WEBHOOK_RATE_LIMIT_WINDOW_MS: ${WEBHOOK_RATE_LIMIT_WINDOW_MS:-60000}
-      # Redis — points to the redis service
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      # LLM keys
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      LLM_PRIMARY: ${LLM_PRIMARY:-gemini}
-      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-8192}
-      DIFF_MAX_CHUNK_BYTES: ${DIFF_MAX_CHUNK_BYTES:-102400}
     depends_on:
       mongo:
         condition: service_healthy
@@ -66,6 +57,9 @@ services:
       - mongo-data:/data/db
       - mongo-config:/data/configdb
     environment:
+      # Uncomment to enable auth in production:
+      # MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      # MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD required}
       MONGO_INITDB_DATABASE: gitguard
     networks:
       - gitguard-network
@@ -76,30 +70,8 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── Redis (BullMQ queue backend) ──────────────────────────
-  redis:
-    image: redis:7.2-alpine
-    container_name: gitguard-redis
-    restart: unless-stopped
-    ports:
-      - '${REDIS_PORT:-6379}:6379'
-    volumes:
-      - redis-data:/data
-    command: >
-      redis-server
-      --save 60 1
-      --loglevel warning
-      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
-    networks:
-      - gitguard-network
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-
   # ── Mongo Express (Dev UI) ─────────────────────────────────
+  # Remove or comment out in production
   mongo-express:
     image: mongo-express:latest
     container_name: gitguard-mongo-ui
@@ -117,8 +89,32 @@ services:
     networks:
       - gitguard-network
     profiles:
-      - dev
+      - dev  # Only start with: docker compose --profile dev up
 
+  # ── Redis (BullMQ queue backend) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gitguard-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - gitguard-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+# ── Volumes ────────────────────────────────────────────────
 volumes:
   mongo-data:
     driver: local
@@ -127,6 +123,7 @@ volumes:
   redis-data:
     driver: local
 
+# ── Networks ───────────────────────────────────────────────
 networks:
   gitguard-network:
     driver: bridge

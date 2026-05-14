@@ -1,6 +1,7 @@
 /**
  * @file tests/helpers/setup.ts
- * @description Jest test setup — sets ALL env vars before any module import triggers validation.
+ * @description Jest global setup — sets ALL env vars before any module triggers validation.
+ * Loaded via jest.config.js setupFiles so it runs before every test file automatically.
  */
 
 process.env['NODE_ENV'] = 'test';
@@ -22,7 +23,7 @@ process.env['JWT_EXPIRES_IN'] = '7d';
 process.env['REDIS_HOST'] = 'localhost';
 process.env['REDIS_PORT'] = '6379';
 process.env['REDIS_PASSWORD'] = '';
-// LLM (optional — fallback handles missing keys)
+// LLM keys (empty — mocked in tests that need them)
 process.env['GEMINI_API_KEY'] = '';
 process.env['GROQ_API_KEY'] = '';
 process.env['LLM_PRIMARY'] = 'gemini';

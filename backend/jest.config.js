@@ -4,7 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
-  // Run setup BEFORE each test file — sets all env vars
+  // Run setup before EVERY test file — sets all env vars
   setupFiles: ['<rootDir>/tests/helpers/setup.ts'],
   transform: {
     '^.+\\.tsx?$': [

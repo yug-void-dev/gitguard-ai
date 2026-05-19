@@ -1,5 +1,9 @@
 import { createBrowserRouter } from 'react-router-dom';
 import LoginPage from '../pages/LoginPage';
+import LandingPage from '../pages/LandingPage';
+import HistoryPage from '../pages/HistoryPage';
+import RepositoriesPage from '../pages/RepositoriesPage';
+import NotFoundPage from '../pages/NotFoundPage';
 
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import DashboardPage from '../pages/DashboardPage';
@@ -15,6 +19,10 @@ import DashboardPage from '../pages/DashboardPage';
 const router = createBrowserRouter([
   {
     path: '/',
+    element: <LandingPage />,
+  },
+  {
+    path: '/login',
     element: <LoginPage />,
   },
   {
@@ -24,7 +32,19 @@ const router = createBrowserRouter([
         path: '/dashboard',
         element: <DashboardPage />,
       },
+      {
+        path: '/history',
+        element: <HistoryPage />,
+      },
+      {
+        path: '/repositories',
+        element: <RepositoriesPage />,
+      },
     ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ]);
 

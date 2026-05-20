@@ -2,6 +2,9 @@ import { createBrowserRouter } from 'react-router-dom';
 import LoginPage from '../pages/LoginPage';
 import LandingPage from '../pages/LandingPage';
 import HistoryPage from '../pages/HistoryPage';
+import ReviewsPage from '../pages/ReviewsPage';
+import SettingsPage from '../pages/SettingsPage';
+import ReviewDetailPage from '../pages/ReviewDetailPage';
 import RepositoriesPage from '../pages/RepositoriesPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -35,6 +38,18 @@ const router = createBrowserRouter([
       {
         path: '/history',
         element: <HistoryPage />,
+      },
+      {
+        path: '/reviews',
+        element: <ReviewsPage />,
+      },
+      {
+        path: '/settings',
+        element: <SettingsPage />,
+      },
+      {
+        path: '/history/:reviewId',
+        element: <ReviewDetailPage />,
       },
       {
         path: '/repositories',

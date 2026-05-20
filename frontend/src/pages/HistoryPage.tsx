@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Clock, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -135,150 +136,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   );
 };
 
-// ─── Severity Badge Component ──────────────────────────────────────────────────
-
-interface SeverityBadgeProps {
-  severity: 'high' | 'medium' | 'low' | 'info';
-}
-
-const SeverityBadge: React.FC<SeverityBadgeProps> = ({ severity }) => {
-  const severityConfig = {
-    high: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30' },
-    medium: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30' },
-    low: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30' },
-    info: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30' },
-  };
-
-  const config = severityConfig[severity];
-
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${config.bg} ${config.text} border ${config.border}`}>
-      {severity.toUpperCase()}
-    </span>
-  );
-};
-
-// ─── Finding Card Component ────────────────────────────────────────────────────
-
-interface FindingCardProps {
-  finding: Finding;
-  index: number;
-}
-
-const FindingCard: React.FC<FindingCardProps> = ({ finding }) => (
-  <div className="p-3 rounded-lg bg-white/3 border border-white/5 space-y-2">
-    <div className="flex items-start justify-between gap-2">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-mono text-slate-400">{finding.file}:{finding.line}</span>
-          <SeverityBadge severity={finding.severity} />
-        </div>
-        <p className="text-sm text-slate-300">{finding.message}</p>
-      </div>
-      <div className="text-right">
-        <div className="text-xs text-slate-400">Confidence</div>
-        <div className="text-sm font-semibold text-cyan-400">{Math.round(finding.confidence * 100)}%</div>
-      </div>
-    </div>
-    <div className="pl-2 border-l border-cyan-500/30">
-      <p className="text-xs text-slate-400">
-        <span className="text-cyan-400 font-semibold">Suggestion:</span> {finding.suggestion}
-      </p>
-    </div>
-  </div>
-);
-
-// ─── Review Detail Modal Component ─────────────────────────────────────────────
-
-interface ReviewDetailProps {
-  review: Review;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const ReviewDetail: React.FC<ReviewDetailProps> = ({ review, isOpen, onClose }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-b from-slate-900/95 to-slate-950/95 border border-white/10 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-slate-950/80 backdrop-blur-sm border-b border-white/5 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              {review.repository.fullName} #{review.prNumber}
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">{review.prTitle}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors text-2xl"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6 space-y-6">
-          {/* Status & Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-3 rounded-lg bg-white/3 border border-white/5">
-              <div className="text-xs text-slate-400 mb-1">Status</div>
-              <StatusBadge status={review.status} />
-            </div>
-            <div className="p-3 rounded-lg bg-white/3 border border-white/5">
-              <div className="text-xs text-slate-400 mb-1">Vulnerabilities</div>
-              <div className="text-2xl font-bold text-red-400">{review.metrics.vulnerabilitiesCount}</div>
-            </div>
-            <div className="p-3 rounded-lg bg-white/3 border border-white/5">
-              <div className="text-xs text-slate-400 mb-1">Performance Issues</div>
-              <div className="text-2xl font-bold text-amber-400">{review.metrics.performanceIssuesCount}</div>
-            </div>
-            <div className="p-3 rounded-lg bg-white/3 border border-white/5">
-              <div className="text-xs text-slate-400 mb-1">Quality Score</div>
-              <div className="text-2xl font-bold text-emerald-400">{review.metrics.codeQualityScore}%</div>
-            </div>
-          </div>
-
-          {/* Summary */}
-          <div className="p-4 rounded-lg bg-white/3 border border-white/5">
-            <h3 className="text-sm font-semibold text-white mb-2">Summary</h3>
-            <p className="text-sm text-slate-300 leading-relaxed">{review.summary}</p>
-          </div>
-
-          {/* Findings */}
-          {review.findings.length > 0 ? (
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <AlertCircle size={16} className="text-amber-400" />
-                Findings ({review.findings.length})
-              </h3>
-              <div className="space-y-3">
-                {review.findings.map((finding, idx) => (
-                  <FindingCard key={idx} finding={finding} index={idx} />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
-              <p className="text-sm text-emerald-400 font-medium">✓ No issues found</p>
-            </div>
-          )}
-
-          {/* Timestamps */}
-          <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-            <div>
-              Created: {review.createdAt.toLocaleString()}
-            </div>
-            <div>
-              Updated: {review.updatedAt.toLocaleString()}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ─── Review Card Component ────────────────────────────────────────────────────
 
@@ -346,8 +203,8 @@ const HistoryPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const navigate = useNavigate();
 
   // Filter and sort logic
   const filtered = useMemo(() => {
@@ -518,7 +375,7 @@ const HistoryPage: React.FC = () => {
               <ReviewCard
                 key={review.id}
                 review={review}
-                onClick={() => setSelectedReview(review)}
+                onClick={() => navigate(`/history/${review.id}`)}
               />
             ))}
           </div>
@@ -530,14 +387,6 @@ const HistoryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Review Detail Modal */}
-      {selectedReview && (
-        <ReviewDetail
-          review={selectedReview}
-          isOpen={true}
-          onClose={() => setSelectedReview(null)}
-        />
-      )}
     </div>
   );
 };

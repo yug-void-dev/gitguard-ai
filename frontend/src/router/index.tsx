@@ -1,6 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
 import LoginPage from '../pages/LoginPage';
-import LandingPage from '../pages/LandingPage';
 import HistoryPage from '../pages/HistoryPage';
 import ReviewsPage from '../pages/ReviewsPage';
 import SettingsPage from '../pages/SettingsPage';
@@ -22,10 +21,6 @@ import DashboardPage from '../pages/DashboardPage';
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <LandingPage />,
-  },
-  {
-    path: '/login',
     element: <LoginPage />,
   },
   {

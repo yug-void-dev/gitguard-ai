@@ -18,6 +18,8 @@ import webhookRoutes from './routes/webhooks';
 import healthRoutes from './routes/health';
 import authRoutes from './routes/authRoutes';
 import queueRoutes from './routes/queueRoutes';
+import reviewRoutes from './routes/reviewRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -89,6 +91,12 @@ export function createApp(): Application {
 
   // Queue metrics route (authenticated)
   app.use('/api/queue', express.json(), queueRoutes);
+
+  // Reviews route (authenticated)
+  app.use('/api/reviews', express.json(), reviewRoutes);
+
+  // Notifications route (authenticated)
+  app.use('/api/notifications', express.json(), notificationRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

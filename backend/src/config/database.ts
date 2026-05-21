@@ -11,8 +11,7 @@ import { logger } from '../lib/logger';
 
 /** Connection options for production-grade reliability */
 const MONGOOSE_OPTIONS: mongoose.ConnectOptions = {
-  // Automatically retry failed operations
-  serverSelectionTimeoutMS: 5000,
+  serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
 };
 

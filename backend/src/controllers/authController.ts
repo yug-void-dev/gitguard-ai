@@ -160,21 +160,9 @@ export const register = async (
       password,
     });
 
-    const token = jwt.sign(
-      { id: user._id },
-      env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
-    );
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
     res.status(201).json({
       success: true,
+      message: 'Registration successful. Please log in.',
       user: {
         id: user._id,
         login: user.login,

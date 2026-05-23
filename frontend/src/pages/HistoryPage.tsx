@@ -1,116 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Clock, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Finding {
-  file: string;
-  line: number;
-  severity: 'high' | 'medium' | 'low' | 'info';
-  message: string;
-  suggestion: string;
-  confidence: number;
-}
-
-interface Metrics {
-  vulnerabilitiesCount: number;
-  performanceIssuesCount: number;
-  codeQualityScore: number;
-}
-
-interface Review {
-  id: string;
-  repository: {
-    owner: string;
-    name: string;
-    fullName: string;
-  };
-  prNumber: number;
-  prTitle: string;
-  status: 'pending' | 'completed' | 'failed';
-  findings: Finding[];
-  summary: string;
-  metrics: Metrics;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-type SortField = 'date' | 'vulnerabilities' | 'score';
-type SortOrder = 'asc' | 'desc';
-type StatusFilter = 'all' | 'pending' | 'completed' | 'failed';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    repository: { owner: 'myorg', name: 'api-service', fullName: 'myorg/api-service' },
-    prNumber: 542,
-    prTitle: 'feat: add authentication middleware',
-    status: 'completed',
-    findings: [
-      { file: 'src/auth/middleware.ts', line: 42, severity: 'high', message: 'SQL injection vulnerability', suggestion: 'Use parameterized queries', confidence: 0.95 },
-      { file: 'src/auth/utils.ts', line: 18, severity: 'medium', message: 'Weak password validation', suggestion: 'Enforce minimum 12 characters', confidence: 0.87 },
-      { file: 'src/routes/auth.ts', line: 105, severity: 'low', message: 'Missing error logging', suggestion: 'Add logger.error call', confidence: 0.72 },
-    ],
-    summary: 'Review completed. Found 3 issues: 1 high severity vulnerability detected in SQL query handling. 2 medium severity issues related to authentication logic.',
-    metrics: { vulnerabilitiesCount: 1, performanceIssuesCount: 0, codeQualityScore: 78 },
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-  },
-  {
-    id: '2',
-    repository: { owner: 'myorg', name: 'frontend-app', fullName: 'myorg/frontend-app' },
-    prNumber: 315,
-    prTitle: 'refactor: migrate to React hooks',
-    status: 'completed',
-    findings: [
-      { file: 'src/components/Dashboard.tsx', line: 67, severity: 'medium', message: 'Missing dependency in useEffect', suggestion: 'Add dependency array', confidence: 0.92 },
-      { file: 'src/hooks/useData.ts', line: 23, severity: 'low', message: 'Console.log left in code', suggestion: 'Remove debug statements', confidence: 0.99 },
-    ],
-    summary: 'Code quality review complete. 2 issues found affecting performance and maintainability.',
-    metrics: { vulnerabilitiesCount: 0, performanceIssuesCount: 1, codeQualityScore: 82 },
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-  },
-  {
-    id: '3',
-    repository: { owner: 'myorg', name: 'backend-core', fullName: 'myorg/backend-core' },
-    prNumber: 89,
-    prTitle: 'feat: implement caching layer',
-    status: 'completed',
-    findings: [],
-    summary: 'Excellent code quality. No vulnerabilities detected. All security best practices followed.',
-    metrics: { vulnerabilitiesCount: 0, performanceIssuesCount: 0, codeQualityScore: 95 },
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '4',
-    repository: { owner: 'myorg', name: 'data-pipeline', fullName: 'myorg/data-pipeline' },
-    prNumber: 167,
-    prTitle: 'fix: handle edge cases in data processing',
-    status: 'pending',
-    findings: [],
-    summary: 'Analysis in progress...',
-    metrics: { vulnerabilitiesCount: 0, performanceIssuesCount: 0, codeQualityScore: 0 },
-    createdAt: new Date(Date.now() - 10 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 5 * 60 * 1000),
-  },
-  {
-    id: '5',
-    repository: { owner: 'myorg', name: 'ml-models', fullName: 'myorg/ml-models' },
-    prNumber: 203,
-    prTitle: 'upgrade: TensorFlow to 2.14',
-    status: 'failed',
-    findings: [],
-    summary: 'Analysis failed: Unable to parse Python syntax. Review manually.',
-    metrics: { vulnerabilitiesCount: 0, performanceIssuesCount: 0, codeQualityScore: 0 },
-    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-  },
-];
+import { useReviews } from '../hooks/useReviews';
+import type { Review } from '../types/review.types';
+import Spinner from '../components/common/Spinner';
 
 // ─── Status Badge Component ────────────────────────────────────────────────────
 
@@ -198,66 +91,32 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onClick }) => (
 // ─── Main History Page ────────────────────────────────────────────────────────
 
 const HistoryPage: React.FC = () => {
-  const [reviews] = useState<Review[]>(mockReviews);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [sortField, setSortField] = useState<SortField>('date');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showFilters, setShowFilters] = useState(false);
+  
+  const {
+    reviews,
+    totalItems,
+    isLoading,
+    filters,
+    setFilters,
+  } = useReviews({ status: 'all' });
+
   const navigate = useNavigate();
 
-  // Filter and sort logic
-  const filtered = useMemo(() => {
-    let result = reviews;
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      result = result.filter((r) => r.status === statusFilter);
-    }
-
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.repository.fullName.toLowerCase().includes(term) ||
-          r.prTitle.toLowerCase().includes(term) ||
-          r.prNumber.toString().includes(term)
-      );
-    }
-
-    return result;
-  }, [reviews, searchTerm, statusFilter]);
-
-  const sorted = useMemo(() => {
-    const copy = [...filtered];
-    copy.sort((a, b) => {
-      let aVal: any;
-      let bVal: any;
-
-      switch (sortField) {
-        case 'date':
-          aVal = new Date(a.createdAt).getTime();
-          bVal = new Date(b.createdAt).getTime();
-          break;
-        case 'vulnerabilities':
-          aVal = a.metrics.vulnerabilitiesCount;
-          bVal = b.metrics.vulnerabilitiesCount;
-          break;
-        case 'score':
-          aVal = a.metrics.codeQualityScore;
-          bVal = b.metrics.codeQualityScore;
-          break;
-      }
-
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-    });
-
-    return copy;
-  }, [filtered, sortField, sortOrder]);
+  // Local filtering for search (if backend search isn't fully implemented yet)
+  const filtered = reviews.filter((r) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      r.repository.fullName.toLowerCase().includes(term) ||
+      r.prTitle.toLowerCase().includes(term) ||
+      r.prNumber.toString().includes(term)
+    );
+  });
 
   const stats = {
-    total: reviews.length,
+    total: totalItems,
     completed: reviews.filter((r) => r.status === 'completed').length,
     pending: reviews.filter((r) => r.status === 'pending').length,
     failed: reviews.filter((r) => r.status === 'failed').length,
@@ -323,8 +182,8 @@ const HistoryPage: React.FC = () => {
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-2">Status</label>
                   <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                    value={filters.status || 'all'}
+                    onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
                     className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-cyan-500/50"
                   >
                     <option value="all">All Statuses</option>
@@ -333,45 +192,22 @@ const HistoryPage: React.FC = () => {
                     <option value="failed">Failed</option>
                   </select>
                 </div>
-
-                {/* Sort By */}
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-2">Sort By</label>
-                  <select
-                    value={sortField}
-                    onChange={(e) => setSortField(e.target.value as SortField)}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-cyan-500/50"
-                  >
-                    <option value="date">Date</option>
-                    <option value="vulnerabilities">Vulnerabilities</option>
-                    <option value="score">Quality Score</option>
-                  </select>
-                </div>
-
-                {/* Sort Order */}
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-2">Order</label>
-                  <select
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-cyan-500/50"
-                  >
-                    <option value="desc">Descending</option>
-                    <option value="asc">Ascending</option>
-                  </select>
-                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* Results */}
-        {sorted.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Spinner size={32} />
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="space-y-4">
             <div className="text-sm text-slate-400 mb-4">
-              Showing {sorted.length} of {reviews.length} reviews
+              Showing {filtered.length} reviews
             </div>
-            {sorted.map((review) => (
+            {filtered.map((review) => (
               <ReviewCard
                 key={review.id}
                 review={review}

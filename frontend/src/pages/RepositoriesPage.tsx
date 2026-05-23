@@ -1,138 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Settings, ToggleRight, Trash2, GitBranch, Code2, Shield, AlertCircle } from 'lucide-react';
+import { Plus, Search, Settings, ToggleRight, Trash2, Code2, Shield, AlertCircle } from 'lucide-react';
+import { useRepository } from '../hooks/useRepository';
+import type { ConnectedRepo, RepositoryRule } from '../types/repository.types';
+import Spinner from '../components/common/Spinner';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ReviewMode = 'full' | 'security-only' | 'strict' | 'off';
-
-interface Repository {
-  id: string;
-  githubId: number;
-  fullName: string;
-  isPrivate: boolean;
-  defaultBranch: string;
-  language: string | null;
-  reviewMode: ReviewMode;
-  ignorePatterns: string[];
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  reviewsCount?: number;
-  lastReviewDate?: Date;
-}
-
-type SortField = 'name' | 'language' | 'reviews' | 'recent';
+type SortField = 'name' | 'language' | 'recent';
 type SortOrder = 'asc' | 'desc';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Security Mode Badge ────────────────────────────────────────────────────────
 
-const mockRepositories: Repository[] = [
-  {
-    id: '1',
-    githubId: 123456,
-    fullName: 'myorg/api-service',
-    isPrivate: false,
-    defaultBranch: 'main',
-    language: 'TypeScript',
-    reviewMode: 'full',
-    ignorePatterns: ['*.test.ts', 'dist/**'],
-    isActive: true,
-    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    reviewsCount: 42,
-    lastReviewDate: new Date(Date.now() - 1 * 60 * 60 * 1000),
-  },
-  {
-    id: '2',
-    githubId: 123457,
-    fullName: 'myorg/frontend-app',
-    isPrivate: false,
-    defaultBranch: 'main',
-    language: 'JavaScript',
-    reviewMode: 'security-only',
-    ignorePatterns: ['node_modules/**', '.next/**'],
-    isActive: true,
-    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-    reviewsCount: 28,
-    lastReviewDate: new Date(Date.now() - 3 * 60 * 60 * 1000),
-  },
-  {
-    id: '3',
-    githubId: 123458,
-    fullName: 'myorg/data-pipeline',
-    isPrivate: true,
-    defaultBranch: 'develop',
-    language: 'Python',
-    reviewMode: 'strict',
-    ignorePatterns: ['venv/**', '__pycache__/**'],
-    isActive: true,
-    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    reviewsCount: 15,
-    lastReviewDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '4',
-    githubId: 123459,
-    fullName: 'myorg/ml-models',
-    isPrivate: true,
-    defaultBranch: 'main',
-    language: 'Python',
-    reviewMode: 'full',
-    ignorePatterns: ['models/**', 'datasets/**'],
-    isActive: true,
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    reviewsCount: 8,
-    lastReviewDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '5',
-    githubId: 123460,
-    fullName: 'myorg/backend-core',
-    isPrivate: false,
-    defaultBranch: 'main',
-    language: 'Go',
-    reviewMode: 'strict',
-    ignorePatterns: ['vendor/**'],
-    isActive: true,
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-    reviewsCount: 22,
-    lastReviewDate: new Date(Date.now() - 12 * 60 * 60 * 1000),
-  },
-  {
-    id: '6',
-    githubId: 123461,
-    fullName: 'myorg/legacy-service',
-    isPrivate: false,
-    defaultBranch: 'master',
-    language: 'Java',
-    reviewMode: 'off',
-    ignorePatterns: [],
-    isActive: false,
-    createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    reviewsCount: 0,
-  },
-];
-
-// ─── Review Mode Badge ────────────────────────────────────────────────────────
-
-interface ReviewModeBadgeProps {
-  mode: ReviewMode;
+interface SecurityModeBadgeProps {
+  strictMode: boolean;
 }
 
-const ReviewModeBadge: React.FC<ReviewModeBadgeProps> = ({ mode }) => {
-  const modeConfig = {
-    full: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', label: 'Full Review' },
-    'security-only': { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', label: 'Security Only' },
-    strict: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', label: 'Strict' },
-    off: { bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30', label: 'Disabled' },
-  };
-
-  const config = modeConfig[mode];
+const SecurityModeBadge: React.FC<SecurityModeBadgeProps> = ({ strictMode }) => {
+  const config = strictMode
+    ? { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', label: 'Strict Security' }
+    : { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', label: 'Standard Rules' };
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${config.bg} ${config.text} text-xs font-medium border ${config.border}`}>
@@ -145,7 +29,7 @@ const ReviewModeBadge: React.FC<ReviewModeBadgeProps> = ({ mode }) => {
 // ─── Language Badge ───────────────────────────────────────────────────────────
 
 interface LanguageBadgeProps {
-  language: string | null;
+  language?: string | null;
 }
 
 const LanguageBadge: React.FC<LanguageBadgeProps> = ({ language }) => {
@@ -175,10 +59,10 @@ const LanguageBadge: React.FC<LanguageBadgeProps> = ({ language }) => {
 // ─── Repository Card Component ────────────────────────────────────────────────
 
 interface RepositoryCardProps {
-  repo: Repository;
-  onConfigure: (repo: Repository) => void;
-  onToggle: (repo: Repository) => void;
-  onDelete: (repo: Repository) => void;
+  repo: ConnectedRepo;
+  onConfigure: (repo: ConnectedRepo) => void;
+  onToggle: (repo: ConnectedRepo) => void;
+  onDelete: (repo: ConnectedRepo) => void;
 }
 
 const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onConfigure, onToggle, onDelete }) => (
@@ -188,17 +72,8 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onConfigure, onTo
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2">
           <h3 className="text-sm font-mono font-semibold text-cyan-400 group-hover:text-cyan-300 truncate">
-            {repo.fullName}
+            {repo.repositoryFullName}
           </h3>
-          {repo.isPrivate && (
-            <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-slate-700 text-slate-200">
-              Private
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
-          <GitBranch size={12} />
-          {repo.defaultBranch}
         </div>
       </div>
 
@@ -220,27 +95,20 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onConfigure, onTo
 
     {/* Badges */}
     <div className="flex flex-wrap gap-2 mb-4">
-      <ReviewModeBadge mode={repo.reviewMode} />
-      <LanguageBadge language={repo.language} />
+      <SecurityModeBadge strictMode={repo.rules.strictMode} />
+      <LanguageBadge language={repo.meta?.language} />
     </div>
 
     {/* Stats */}
     <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-white/3 border border-white/5 mb-4 text-xs">
       <div>
-        <div className="text-slate-400 mb-1">Reviews</div>
-        <div className="text-lg font-bold text-cyan-400">{repo.reviewsCount ?? 0}</div>
+        <div className="text-slate-400 mb-1">Webhook</div>
+        <div className="text-lg font-bold text-cyan-400">{repo.webhookId ? 'Connected' : 'Missing'}</div>
       </div>
-      {repo.lastReviewDate ? (
-        <div>
-          <div className="text-slate-400 mb-1">Last Review</div>
-          <div className="text-cyan-400 font-mono text-xs">{new Date(repo.lastReviewDate).toLocaleDateString()}</div>
-        </div>
-      ) : (
-        <div>
-          <div className="text-slate-400 mb-1">Ignore Patterns</div>
-          <div className="text-cyan-400">{repo.ignorePatterns.length}</div>
-        </div>
-      )}
+      <div>
+        <div className="text-slate-400 mb-1">Lint Ignore</div>
+        <div className="text-cyan-400 font-semibold">{repo.rules.ignoreLinting ? 'Enabled' : 'Disabled'}</div>
+      </div>
     </div>
 
     {/* Actions */}
@@ -277,23 +145,25 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onConfigure, onTo
 // ─── Configuration Modal Component ────────────────────────────────────────────
 
 interface RepositorySettingsProps {
-  repo: Repository;
+  repo: ConnectedRepo;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedRepo: Repository) => void;
+  onSave: (repoId: string, rules: Partial<RepositoryRule>) => void;
 }
 
 const RepositorySettings: React.FC<RepositorySettingsProps> = ({ repo, isOpen, onClose, onSave }) => {
-  const [reviewMode, setReviewMode] = React.useState<ReviewMode>(repo.reviewMode);
-  const [ignorePatterns, setIgnorePatterns] = React.useState(repo.ignorePatterns.join('\n'));
+  const [strictMode, setStrictMode] = React.useState(repo.rules.strictMode);
+  const [ignoreLinting, setIgnoreLinting] = React.useState(repo.rules.ignoreLinting);
+  const [checkPerformance, setCheckPerformance] = React.useState(repo.rules.checkPerformance);
+  const [minConfidence, setMinConfidence] = React.useState(repo.rules.minConfidence);
 
   const handleSave = () => {
-    const updatedRepo = {
-      ...repo,
-      reviewMode,
-      ignorePatterns: ignorePatterns.split('\n').filter((p) => p.trim()),
-    };
-    onSave(updatedRepo);
+    onSave(repo._id, {
+      strictMode,
+      ignoreLinting,
+      checkPerformance,
+      minConfidence,
+    });
     onClose();
   };
 
@@ -321,57 +191,87 @@ const RepositorySettings: React.FC<RepositorySettingsProps> = ({ repo, isOpen, o
             <div className="p-4 rounded-lg bg-white/3 border border-white/5 space-y-2">
               <div>
                 <div className="text-xs text-slate-400 mb-1">Full Name</div>
-                <div className="text-sm text-white font-mono">{repo.fullName}</div>
+                <div className="text-sm text-white font-mono">{repo.repositoryFullName}</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs text-slate-400 mb-1">Default Branch</div>
-                  <div className="text-sm text-white">{repo.defaultBranch}</div>
+                  <div className="text-xs text-slate-400 mb-1">Language</div>
+                  <div className="text-sm text-white">{repo.meta?.language || 'Unknown'}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-400 mb-1">Language</div>
-                  <div className="text-sm text-white">{repo.language || 'Unknown'}</div>
+                  <div className="text-xs text-slate-400 mb-1">Stars</div>
+                  <div className="text-sm text-white">{repo.meta?.stargazersCount || 0}</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-400 mb-1">Privacy</div>
-                <div className="text-sm text-white">{repo.isPrivate ? 'Private' : 'Public'}</div>
               </div>
             </div>
           </div>
 
-          {/* Review Mode */}
-          <div>
-            <h3 className="text-sm font-semibold text-white mb-3">Review Mode</h3>
-            <select
-              value={reviewMode}
-              onChange={(e) => setReviewMode(e.target.value as ReviewMode)}
-              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-cyan-500/50"
-            >
-              <option value="full">Full Review (Security + Quality)</option>
-              <option value="security-only">Security Only</option>
-              <option value="strict">Strict (Enhanced Checks)</option>
-              <option value="off">Disabled</option>
-            </select>
-            <p className="text-xs text-slate-400 mt-2">
-              {reviewMode === 'full' && 'Perform comprehensive security and code quality reviews on all pull requests.'}
-              {reviewMode === 'security-only' && 'Only scan for security vulnerabilities. Skip general code quality checks.'}
-              {reviewMode === 'strict' && 'Enhanced security checks with stricter quality standards and additional validations.'}
-              {reviewMode === 'off' && 'Disable automatic reviews for this repository.'}
-            </p>
-          </div>
+          {/* Rules Configuration */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-white mb-3">Analysis Rules</h3>
+            
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="mt-1">
+                <input
+                  type="checkbox"
+                  checked={strictMode}
+                  onChange={(e) => setStrictMode(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/50"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-white group-hover:text-cyan-400 transition-colors">Strict Mode</div>
+                <div className="text-xs text-slate-400">Enable strict security scanning. Fails PRs on any high-severity finding.</div>
+              </div>
+            </label>
 
-          {/* Ignore Patterns */}
-          <div>
-            <h3 className="text-sm font-semibold text-white mb-3">Ignore Patterns</h3>
-            <textarea
-              value={ignorePatterns}
-              onChange={(e) => setIgnorePatterns(e.target.value)}
-              placeholder="*.test.ts&#10;dist/**&#10;node_modules/**"
-              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 resize-none"
-              rows={5}
-            />
-            <p className="text-xs text-slate-400 mt-2">One pattern per line. Use glob syntax. These files will be excluded from reviews.</p>
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="mt-1">
+                <input
+                  type="checkbox"
+                  checked={ignoreLinting}
+                  onChange={(e) => setIgnoreLinting(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/50"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-white group-hover:text-cyan-400 transition-colors">Ignore Linting</div>
+                <div className="text-xs text-slate-400">Skip stylistic and linter issues. Focus solely on code quality and security.</div>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="mt-1">
+                <input
+                  type="checkbox"
+                  checked={checkPerformance}
+                  onChange={(e) => setCheckPerformance(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/50"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-white group-hover:text-cyan-400 transition-colors">Check Performance</div>
+                <div className="text-xs text-slate-400">Analyze code for performance anti-patterns and potential bottlenecks.</div>
+              </div>
+            </label>
+
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Minimum Confidence: {minConfidence.toFixed(2)}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={minConfidence}
+                onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              />
+              <div className="text-xs text-slate-400 mt-1">
+                Only report findings with a confidence score above this threshold.
+              </div>
+            </div>
           </div>
 
           {/* Actions */}
@@ -398,17 +298,17 @@ const RepositorySettings: React.FC<RepositorySettingsProps> = ({ repo, isOpen, o
 // ─── Main Repositories Page ────────────────────────────────────────────────────
 
 const RepositoriesPage: React.FC = () => {
-  const [repositories, setRepositories] = useState<Repository[]>(mockRepositories);
+  const { connectedRepos, isLoading, updateRules, toggleActive, disconnectRepo } = useRepository();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<ConnectedRepo | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Filter logic
   const filtered = useMemo(() => {
-    let result = repositories;
+    let result = connectedRepos;
 
     // Activity filter
     if (filterActive === 'active') {
@@ -422,14 +322,13 @@ const RepositoriesPage: React.FC = () => {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (r) =>
-          r.fullName.toLowerCase().includes(term) ||
-          (r.language && r.language.toLowerCase().includes(term)) ||
-          r.defaultBranch.toLowerCase().includes(term)
+          r.repositoryFullName.toLowerCase().includes(term) ||
+          (r.meta?.language && r.meta.language.toLowerCase().includes(term))
       );
     }
 
     return result;
-  }, [repositories, searchTerm, filterActive]);
+  }, [connectedRepos, searchTerm, filterActive]);
 
   // Sort logic
   const sorted = useMemo(() => {
@@ -440,16 +339,12 @@ const RepositoriesPage: React.FC = () => {
 
       switch (sortField) {
         case 'name':
-          aVal = a.fullName.toLowerCase();
-          bVal = b.fullName.toLowerCase();
+          aVal = a.repositoryFullName.toLowerCase();
+          bVal = b.repositoryFullName.toLowerCase();
           break;
         case 'language':
-          aVal = (a.language || '').toLowerCase();
-          bVal = (b.language || '').toLowerCase();
-          break;
-        case 'reviews':
-          aVal = a.reviewsCount ?? 0;
-          bVal = b.reviewsCount ?? 0;
+          aVal = (a.meta?.language || '').toLowerCase();
+          bVal = (b.meta?.language || '').toLowerCase();
           break;
         case 'recent':
           aVal = new Date(a.updatedAt).getTime();
@@ -465,38 +360,30 @@ const RepositoriesPage: React.FC = () => {
 
   // Stats
   const stats = {
-    total: repositories.length,
-    active: repositories.filter((r) => r.isActive).length,
-    inactive: repositories.filter((r) => !r.isActive).length,
-    languages: new Set(repositories.filter((r) => r.language).map((r) => r.language)).size,
+    total: connectedRepos.length,
+    active: connectedRepos.filter((r) => r.isActive).length,
+    inactive: connectedRepos.filter((r) => !r.isActive).length,
+    languages: new Set(connectedRepos.filter((r) => r.meta?.language).map((r) => r.meta?.language)).size,
   };
 
   // Handlers
-  const handleConfigure = (repo: Repository) => {
+  const handleConfigure = (repo: ConnectedRepo) => {
     setSelectedRepo(repo);
     setIsSettingsOpen(true);
   };
 
-  const handleToggle = (repo: Repository) => {
-    setRepositories(
-      repositories.map((r) =>
-        r.id === repo.id ? { ...r, isActive: !r.isActive } : r
-      )
-    );
+  const handleToggle = (repo: ConnectedRepo) => {
+    toggleActive(repo._id, !repo.isActive);
   };
 
-  const handleDelete = (repo: Repository) => {
-    if (confirm(`Are you sure you want to delete ${repo.fullName}?`)) {
-      setRepositories(repositories.filter((r) => r.id !== repo.id));
+  const handleDelete = (repo: ConnectedRepo) => {
+    if (confirm(`Are you sure you want to delete ${repo.repositoryFullName}?`)) {
+      disconnectRepo(repo._id);
     }
   };
 
-  const handleSave = (updatedRepo: Repository) => {
-    setRepositories(
-      repositories.map((r) =>
-        r.id === updatedRepo.id ? updatedRepo : r
-      )
-    );
+  const handleSave = (repoId: string, rules: Partial<RepositoryRule>) => {
+    updateRules(repoId, rules);
   };
 
   return (
@@ -571,7 +458,6 @@ const RepositoriesPage: React.FC = () => {
             >
               <option value="name">Sort by Name</option>
               <option value="language">Sort by Language</option>
-              <option value="reviews">Sort by Reviews</option>
               <option value="recent">Sort by Recent</option>
             </select>
 
@@ -588,15 +474,19 @@ const RepositoriesPage: React.FC = () => {
         </div>
 
         {/* Results */}
-        {sorted.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Spinner size={32} />
+          </div>
+        ) : sorted.length > 0 ? (
           <div>
             <div className="text-sm text-slate-400 mb-4">
-              Showing {sorted.length} of {repositories.length} repositories
+              Showing {sorted.length} of {connectedRepos.length} repositories
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sorted.map((repo) => (
                 <RepositoryCard
-                  key={repo.id}
+                  key={repo._id}
                   repo={repo}
                   onConfigure={handleConfigure}
                   onToggle={handleToggle}

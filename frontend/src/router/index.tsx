@@ -1,5 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom';
+
+// Pages
 import LoginPage from '../pages/LoginPage';
+import DashboardPage from '../pages/DashboardPage';
 import HistoryPage from '../pages/HistoryPage';
 import ReviewsPage from '../pages/ReviewsPage';
 import SettingsPage from '../pages/SettingsPage';
@@ -7,53 +10,74 @@ import ReviewDetailPage from '../pages/ReviewDetailPage';
 import RepositoriesPage from '../pages/RepositoriesPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
+// Layouts
+import DashboardLayout from '../layouts/DashboardLayout';
+
+// Auth guard
 import ProtectedRoute from '../components/auth/ProtectedRoute';
-import DashboardPage from '../pages/DashboardPage';
+
+// Route constants
+import { ROUTES, ROUTE_PATTERNS } from '../constants/routes';
 
 /**
  * Application router.
- * Add new routes here as the app grows.
  *
- * Pattern:
- *   Public routes  → no layout wrapper
- *   Protected routes → wrap with <AuthLayout> or similar
+ * Structure:
+ *   /               → LoginPage          (public)
+ *   /dashboard      → DashboardLayout > DashboardPage   (protected)
+ *   /repositories   → DashboardLayout > RepositoriesPage
+ *   /reviews        → DashboardLayout > ReviewsPage
+ *   /history        → DashboardLayout > HistoryPage
+ *   /history/:id    → DashboardLayout > ReviewDetailPage
+ *   /settings       → DashboardLayout > SettingsPage
+ *   *               → NotFoundPage
  */
 const router = createBrowserRouter([
+  // ── Public routes ──────────────────────────────────────────────────────────
   {
-    path: '/',
+    path: ROUTES.LOGIN,
     element: <LoginPage />,
   },
+
+  // ── Protected routes (auth guard + dashboard shell) ───────────────────────
   {
     element: <ProtectedRoute />,
     children: [
       {
-        path: '/dashboard',
-        element: <DashboardPage />,
-      },
-      {
-        path: '/history',
-        element: <HistoryPage />,
-      },
-      {
-        path: '/reviews',
-        element: <ReviewsPage />,
-      },
-      {
-        path: '/settings',
-        element: <SettingsPage />,
-      },
-      {
-        path: '/history/:reviewId',
-        element: <ReviewDetailPage />,
-      },
-      {
-        path: '/repositories',
-        element: <RepositoriesPage />,
+        element: <DashboardLayout />,
+        children: [
+          {
+            path: ROUTES.DASHBOARD,
+            element: <DashboardPage />,
+          },
+          {
+            path: ROUTES.REPOSITORIES,
+            element: <RepositoriesPage />,
+          },
+          {
+            path: ROUTES.REVIEWS,
+            element: <ReviewsPage />,
+          },
+          {
+            path: ROUTES.HISTORY,
+            element: <HistoryPage />,
+          },
+          {
+            path: ROUTE_PATTERNS.REVIEW_DETAIL,
+            element: <ReviewDetailPage />,
+          },
+          {
+            path: ROUTES.SETTINGS,
+            element: <SettingsPage />,
+          },
+        ],
       },
     ],
   },
+
+  // ── 404 ───────────────────────────────────────────────────────────────────
   {
-    path: '*',
+    path: ROUTES.NOT_FOUND,
     element: <NotFoundPage />,
   },
 ]);

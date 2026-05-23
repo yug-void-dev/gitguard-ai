@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Clock, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
-import { getReviews } from '../services/review.service';
+import { getReviews, getReviewStats, type ReviewStats } from '../services/review.service';
 import type { Review } from '../types/review.types';
 
 const statusConfig = {
@@ -67,20 +67,30 @@ const ReviewsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [stats, setStats] = useState<ReviewStats | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     setLoading(true);
     setError(null);
 
-    getReviews()
-      .then(setReviews)
+    Promise.all([
+      getReviews(currentPage, 12),
+      getReviewStats()
+    ])
+      .then(([reviewsData, statsData]) => {
+        setReviews(reviewsData.reviews);
+        setTotalPages(reviewsData.totalPages);
+        setStats(statsData);
+      })
       .catch((err) => {
         const message = err?.response?.data?.message ?? err.message ?? 'Unable to load reviews.';
         setError(message);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [currentPage]);
 
   const filteredReviews = useMemo(() => {
     const query = searchTerm.toLowerCase().trim();
@@ -154,15 +164,15 @@ const ReviewsPage: React.FC = () => {
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div className="rounded-3xl bg-white/5 border border-white/10 p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Total reviews</p>
-              <p className="mt-3 text-3xl font-semibold text-white">{reviews.length}</p>
+              <p className="mt-3 text-3xl font-semibold text-white">{stats ? stats.totalReviews : 0}</p>
             </div>
             <div className="rounded-3xl bg-white/5 border border-white/10 p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Completed</p>
-              <p className="mt-3 text-3xl font-semibold text-emerald-400">{reviews.filter((review) => review.status === 'completed').length}</p>
+              <p className="mt-3 text-3xl font-semibold text-emerald-400">{stats ? stats.completed : 0}</p>
             </div>
             <div className="rounded-3xl bg-white/5 border border-white/10 p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Pending</p>
-              <p className="mt-3 text-3xl font-semibold text-amber-400">{reviews.filter((review) => review.status === 'pending').length}</p>
+              <p className="mt-3 text-3xl font-semibold text-amber-400">{stats ? stats.pending : 0}</p>
             </div>
           </div>
         </div>
@@ -249,6 +259,29 @@ const ReviewsPage: React.FC = () => {
                   ))}
                 </div>
               )}
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-slate-400">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -260,19 +293,17 @@ const ReviewsPage: React.FC = () => {
               </div>
               <div className="mt-5 space-y-4 text-sm text-slate-300">
                 <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-slate-400">Clean reviews</p>
-                  <p className="mt-2 text-xl font-semibold text-emerald-300">{reviews.filter((review) => review.metrics.vulnerabilitiesCount === 0).length}</p>
+                  <p className="text-slate-400">Total reviews</p>
+                  <p className="mt-2 text-xl font-semibold text-emerald-300">{stats ? stats.totalReviews : 0}</p>
                 </div>
                 <div className="rounded-2xl bg-white/5 p-4">
                   <p className="text-slate-400">Issues detected</p>
-                  <p className="mt-2 text-xl font-semibold text-amber-300">{reviews.reduce((sum, review) => sum + review.metrics.vulnerabilitiesCount, 0)}</p>
+                  <p className="mt-2 text-xl font-semibold text-amber-300">{stats ? stats.totalVulnerabilities : 0}</p>
                 </div>
                 <div className="rounded-2xl bg-white/5 p-4">
                   <p className="text-slate-400">Average quality</p>
                   <p className="mt-2 text-xl font-semibold text-cyan-300">
-                    {reviews.length > 0
-                      ? Math.round(reviews.reduce((sum, review) => sum + review.metrics.codeQualityScore, 0) / reviews.length)
-                      : 0}
+                    {(stats?.totalReviews || 0) > 0 ? Math.round(stats!.averageScore) : 100}%
                   </p>
                 </div>
               </div>

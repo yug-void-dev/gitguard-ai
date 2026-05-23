@@ -1,22 +1,41 @@
-import axios from 'axios';
+/**
+ * @file services/api.ts
+ * @description Axios instance used by all services.
+ * - Base URL from VITE_API_BASE_URL env var
+ * - Credentials (httpOnly cookies) sent on every request
+ * - Response interceptor: on 401, redirect to login without refreshing
+ */
+
+import axios, { type AxiosError } from 'axios';
+import { API_BASE_URL } from '../constants/config';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30_000,
 });
 
-// Add a request interceptor to add the auth token if needed
-// (Though we are using httpOnly cookies, some APIs might need a header)
+// ─── Request interceptor ──────────────────────────────────────────────────────
 api.interceptors.request.use(
-  (config) => {
-    return config;
-  },
-  (error) => {
+  (config) => config,
+  (error) => Promise.reject(error),
+);
+
+// ─── Response interceptor ─────────────────────────────────────────────────────
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // Avoid redirect loops on the login page itself
+      if (!window.location.pathname.includes('/')) {
+        window.location.href = '/';
+      }
+    }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

@@ -17,7 +17,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node10",
     "baseUrl": "."
   },
   "include": ["src/**/*", "tests/**/*"],

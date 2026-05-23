@@ -97,23 +97,53 @@ export const githubCallback = async (
     );
 
     const primaryEmail =
-      emails.find((e) => e.primary)?.email ?? githubUser.email ?? '';
+      emails.find((e) => e.primary && e.verified)?.email ??
+      emails.find((e) => e.primary)?.email ??
+      githubUser.email ??
+      '';
 
-    let user = await User.findOne({ githubId: githubUser.id }).select('+accessToken');
+    /**
+     * Use a single atomic upsert so we NEVER hit the duplicate-key error.
+     *
+     * Search criteria:  githubId match  OR  login match (handles the case
+     * where a user was previously created via another path without a githubId,
+     * or where githubId wasn't stored on first attempt).
+     *
+     * $setOnInsert only runs when a new doc is created; $set always runs.
+     * runValidators: false avoids spurious validation on partial updates.
+     */
+    const user = await User.findOneAndUpdate(
+      {
+        $or: [
+          { githubId: githubUser.id },
+          { login: githubUser.login },
+        ],
+      },
+      {
+        $set: {
+          githubId:   githubUser.id,
+          login:      githubUser.login,
+          avatarUrl:  githubUser.avatar_url,
+          profileUrl: githubUser.html_url,
+          accessToken,
+          lastLogin:  new Date(),
+          ...(primaryEmail ? { email: primaryEmail } : {}),
+        },
+        $setOnInsert: {
+          ...(primaryEmail ? {} : { email: `${githubUser.login}@users.noreply.github.com` }),
+        },
+      },
+      {
+        upsert:          true,
+        new:             true,   // return the updated / newly created doc
+        runValidators:   false,  // skip validators on partial updates
+        select:          '+accessToken',
+      },
+    );
 
-    if (user) {
-      user.accessToken = accessToken;
-      user.lastLogin = new Date();
-      await user.save();
-    } else {
-      user = await User.create({
-        githubId: githubUser.id,
-        login: githubUser.login,
-        email: primaryEmail,
-        avatarUrl: githubUser.avatar_url,
-        profileUrl: githubUser.html_url,
-        accessToken,
-      });
+    if (!user) {
+      next(new AuthError('Failed to create or update user'));
+      return;
     }
 
     const token = jwt.sign(
@@ -131,9 +161,9 @@ export const githubCallback = async (
 
     logger.info({ userId: user._id, login: user.login }, 'User authenticated successfully');
     res.redirect(`${env.ALLOWED_ORIGINS}/dashboard`);
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error }, 'GitHub OAuth Callback failed');
-    next(new AuthError('Authentication flow failed'));
+    next(new AuthError(`Authentication flow failed: ${error.message || error}`));
   }
 };
 

@@ -14,6 +14,7 @@ import axios from 'axios';
 import { Repository } from '../models/Repository';
 import { User } from '../models/User';
 import { logger } from '../lib/logger';
+import { createOctokitClient } from '../github/octokitClient';
 
 interface AuthenticatedRequest extends Request {
   user: { id: string };
@@ -45,6 +46,12 @@ function toConnectedRepo(doc: InstanceType<typeof Repository>) {
     language: doc.language,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
+    meta: {
+      description: doc.fullName,
+      language: doc.language,
+      stargazersCount: 0,
+      htmlUrl: `https://github.com/${doc.fullName}`,
+    },
   };
 }
 
@@ -64,6 +71,57 @@ export const getRepositories = async (
     });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch repositories');
+    next(error);
+  }
+};
+
+// ─── GET /api/github/repos ───────────────────────────────────────────────────
+
+export const getGitHubRepos = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id: userId } = (req as AuthenticatedRequest).user;
+    const accessToken = await getUserAccessToken(userId);
+
+    if (!accessToken) {
+      res.status(401).json({
+        success: false,
+        message: 'No GitHub access token found for the user. Please log in with GitHub.',
+      });
+      return;
+    }
+
+    const octokit = createOctokitClient(accessToken);
+    const { data: repos } = await octokit.rest.repos.listForAuthenticatedUser({
+      per_page: 100,
+      sort: 'updated',
+    });
+
+    const formattedRepos = repos.map((r) => ({
+      id: r.id,
+      name: r.name,
+      fullName: r.full_name,
+      owner: r.owner.login,
+      description: r.description,
+      isPrivate: r.private,
+      defaultBranch: r.default_branch,
+      language: r.language,
+      stargazersCount: r.stargazers_count || 0,
+      openIssuesCount: r.open_issues_count || 0,
+      htmlUrl: r.html_url,
+      cloneUrl: r.clone_url,
+      updatedAt: r.updated_at,
+    }));
+
+    res.status(200).json({
+      success: true,
+      repos: formattedRepos,
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to fetch available GitHub repositories');
     next(error);
   }
 };
@@ -97,14 +155,29 @@ export const connectRepository = async (
       return;
     }
 
-    // Optionally install a GitHub webhook
+    // Optionally install a GitHub webhook and fetch metadata
     let webhookId: number | undefined;
+    let isPrivate = false;
+    let defaultBranch = 'main';
+    let language: string | null = null;
     const accessToken = await getUserAccessToken(userId);
 
     if (accessToken) {
       try {
-        const webhookUrl = `${process.env.WEBHOOK_URL || process.env.API_BASE_URL}/api/webhooks/github`;
         const [owner, repo] = repositoryFullName.split('/');
+        const octokit = createOctokitClient(accessToken);
+
+        // Fetch actual repo details
+        const { data: githubRepo } = await octokit.rest.repos.get({
+          owner,
+          repo,
+        });
+
+        isPrivate = githubRepo.private;
+        defaultBranch = githubRepo.default_branch;
+        language = githubRepo.language;
+
+        const webhookUrl = `${process.env.WEBHOOK_URL || process.env.API_BASE_URL}/api/webhooks/github`;
         const { data: hook } = await axios.post(
           `https://api.github.com/repos/${owner}/${repo}/hooks`,
           {
@@ -126,7 +199,7 @@ export const connectRepository = async (
         );
         webhookId = hook.id;
       } catch (hookError) {
-        logger.warn({ hookError }, 'Failed to install webhook — continuing without it');
+        logger.warn({ hookError }, 'Failed to install webhook or fetch metadata — continuing without it');
       }
     }
 
@@ -135,6 +208,9 @@ export const connectRepository = async (
       fullName: repositoryFullName,
       ownerId: userId,
       webhookId,
+      isPrivate,
+      defaultBranch,
+      language,
     });
 
     logger.info({ repoId: repo._id, repositoryFullName }, 'Repository connected');

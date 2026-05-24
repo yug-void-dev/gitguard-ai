@@ -1,0 +1,16 @@
+export const T = {
+  bg: '#060a14',
+  panel: 'rgba(255,255,255,0.032)',
+  panelHov: 'rgba(255,255,255,0.055)',
+  border: 'rgba(255,255,255,0.07)',
+  text: '#e2e8f0',
+  sub: '#94a3b8',
+  cyan: '#06b6d4',
+  violet: '#818cf8',
+  green: '#10b981',
+  amber: '#f59e0b',
+  red: '#ef4444',
+  orange: '#f97316',
+  muted: '#475569',
+  dim: '#1e293b',
+};

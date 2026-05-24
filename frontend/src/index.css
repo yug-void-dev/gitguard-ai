@@ -65,6 +65,12 @@ input:-webkit-autofill:active {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* ─── Dropdowns ──────────────────────────────────────────────────────────────── */
+select option {
+  background-color: var(--bg-deep);
+  color: #e2e8f0;
+}
+
 /* ─── Keyframe animations ────────────────────────────────────────────────────── */
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }

@@ -20,6 +20,8 @@ import authRoutes from './routes/authRoutes';
 import queueRoutes from './routes/queueRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import repositoryRoutes from './routes/repositoryRoutes';
+import githubRoutes from './routes/githubRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -59,13 +61,14 @@ export function createApp(): Application {
           callback(new Error(`CORS: origin ${origin} not allowed`));
         }
       },
-      methods: ['GET', 'POST'],
+      methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
         'Content-Type',
         'X-Hub-Signature-256',
         'X-GitHub-Event',
         'X-GitHub-Delivery',
         'X-Request-ID',
+        'Authorization',
       ],
       exposedHeaders: ['X-Request-ID'],
       credentials: true, // Required for JWT cookies
@@ -97,6 +100,12 @@ export function createApp(): Application {
 
   // Notifications route (authenticated)
   app.use('/api/notifications', express.json(), notificationRoutes);
+
+  // Repository management routes (authenticated)
+  app.use('/api/repositories', express.json(), repositoryRoutes);
+
+  // GitHub proxy integration routes (authenticated)
+  app.use('/api/github', express.json(), githubRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

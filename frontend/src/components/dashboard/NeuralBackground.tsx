@@ -104,7 +104,7 @@ export function NeuralBG() {
         position: 'fixed',
         inset: 0,
         zIndex: 0,
-        opacity: 0.45,
+        opacity: 0.85,
         pointerEvents: 'none',
       }}
     />
@@ -130,7 +130,7 @@ export function FloatingParticles() {
           animate={{
             y: [`${p.y}vh`, `${p.y - 30}vh`],
             x: [`${p.x}vw`, `${p.x + (Math.random() * 10 - 5)}vw`],
-            opacity: [0, 0.4, 0]
+            opacity: [0, 0.8, 0]
           }}
           transition={{ duration: p.duration, repeat: Infinity, ease: 'linear', delay: p.delay }}
           style={{

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Request, Response, NextFunction } from 'express';
 import { Review } from '../models/Review';
 import { logger } from '../lib/logger';
@@ -129,5 +130,47 @@ export const getReviewById = async (req: Request, res: Response, next: NextFunct
   } catch (error) {
     logger.error({ error }, 'Failed to fetch review');
     next(error);
+=======
+/**
+ * @file src/controllers/reviewController.ts
+ * @description Controller for review retrieval and listing.
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import { Review } from '../models/Review';
+import { AppError, DatabaseError, HttpStatus } from '../lib/errors';
+
+export const getReviews = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const reviews = await Review.find().sort({ updatedAt: -1 }).lean();
+    res.status(200).json({ success: true, reviews });
+  } catch (error) {
+    next(new DatabaseError('Failed to fetch reviews'));
+  }
+};
+
+export const getReviewById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { reviewId } = req.params;
+
+  try {
+    const review = await Review.findById(reviewId).lean();
+
+    if (!review) {
+      next(new AppError('Review not found', HttpStatus.NOT_FOUND, 'REVIEW_NOT_FOUND'));
+      return;
+    }
+
+    res.status(200).json({ success: true, review });
+  } catch (error) {
+    next(new DatabaseError('Failed to fetch review'));
+>>>>>>> 828c344 (Save local changes)
   }
 };

@@ -17,6 +17,7 @@ import cookieParser from 'cookie-parser';
 import webhookRoutes from './routes/webhooks';
 import healthRoutes from './routes/health';
 import authRoutes from './routes/authRoutes';
+import reviewRoutes from './routes/reviewRoutes';
 import queueRoutes from './routes/queueRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import notificationRoutes from './routes/notificationRoutes';
@@ -91,6 +92,7 @@ export function createApp(): Application {
 
   // Auth routes (Apply JSON parser only here to avoid conflict with webhooks)
   app.use('/api/auth', express.json(), authRoutes);
+  app.use('/api/reviews', express.json(), reviewRoutes);
 
   // Queue metrics route (authenticated)
   app.use('/api/queue', express.json(), queueRoutes);

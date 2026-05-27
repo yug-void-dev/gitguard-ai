@@ -18,7 +18,7 @@ module.exports = {
     ],
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(arctic)/)',
+    '/node_modules/(?!(arctic|@octokit|universalify)/)',
   ],
   collectCoverageFrom: [
     'src/**/*.ts',

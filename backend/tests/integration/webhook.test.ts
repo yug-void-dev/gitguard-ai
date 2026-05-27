@@ -33,6 +33,44 @@ jest.mock('arctic', () => ({
   generateCodeVerifier: jest.fn().mockReturnValue('mock-verifier'),
 }));
 
+// Mock @octokit/rest (pure ESM)
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({
+    rest: {
+      repos: {
+        listForAuthenticatedUser: jest.fn(),
+        get: jest.fn(),
+      },
+    },
+  })),
+}));
+
+// Mock Review model — webhookService.ts now persists a pending Review on each PR event.
+// Without this mock, findOneAndUpdate would try to connect to a real MongoDB.
+jest.mock('../../src/models/Review', () => ({
+  Review: {
+    findOneAndUpdate: jest.fn().mockResolvedValue({
+      toJSON: () => ({
+        _id: 'mock-review-id',
+        status: 'pending',
+        prTitle: 'Mock PR',
+        repository: { fullName: 'test/repo' },
+      }),
+    }),
+    find: jest.fn().mockResolvedValue([]),
+    findById: jest.fn().mockResolvedValue(null),
+    countDocuments: jest.fn().mockResolvedValue(0),
+    aggregate: jest.fn().mockResolvedValue([]),
+  },
+}));
+
+// Mock websocket module — webhookService.ts calls broadcastReviewEvent after queuing.
+// In tests there is no WS server, so we just stub it out.
+jest.mock('../../src/websocket', () => ({
+  initWebSocketServer: jest.fn(),
+  broadcastReviewEvent: jest.fn(),
+}));
+
 jest.mock('mongoose', () => {
   const actual = jest.requireActual('mongoose');
   return {

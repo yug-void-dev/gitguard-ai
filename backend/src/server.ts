@@ -15,6 +15,7 @@ import { env } from './config/env';
 import { logger } from './lib/logger';
 import { startWorker, stopWorker } from './queue';
 import { closeRedisConnection } from './config/redis-config';
+import { initWebSocketServer } from './websocket';
 
 const PORT = env.PORT;
 
@@ -39,6 +40,9 @@ async function bootstrap(): Promise<void> {
       `🚀  GitGuard AI Backend listening on port ${PORT}`,
     );
   });
+
+  // Initialize native WebSocket server
+  initWebSocketServer(server);
 
   // ── 4. Graceful shutdown ──────────────────────────────────────────────
   // Handle SIGTERM (Docker stop, Kubernetes eviction) and SIGINT (Ctrl+C)

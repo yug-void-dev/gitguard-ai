@@ -15,6 +15,8 @@ import { PullRequestEvent } from '../types/github';
 import { buildPRContext } from '../ai/contextBuilder';
 import { enqueueReviewJob } from '../queue/reviewQueue';
 import { ReviewJobPayload } from '../types/analysis';
+import { Review } from '../models/Review';
+import { broadcastReviewEvent } from '../websocket';
 
 /** Result returned to the controller after processing */
 export interface WebhookProcessingResult {
@@ -77,6 +79,38 @@ export async function processWebhookEvent(
     { linkedIssues: context.linkedIssues, language: context.language },
     'PR context assembled',
   );
+
+  // ── Save Pending Review to MongoDB ─────────────────────────────────────
+  const [owner, repoName] = event.repository.fullName.split('/');
+  const pendingReview = await Review.findOneAndUpdate(
+    {
+      'repository.fullName': event.repository.fullName,
+      prNumber: event.pullRequest.number,
+    },
+    {
+      $set: {
+        repository: { owner, name: repoName, fullName: event.repository.fullName },
+        prTitle: event.pullRequest.title,
+        status: 'pending',
+        findings: [],
+        summary: 'Pull Request received. Queued for AI analysis...',
+        metrics: {
+          vulnerabilitiesCount: 0,
+          performanceIssuesCount: 0,
+          codeQualityScore: 0,
+        },
+        diffData: '',
+      },
+    },
+    { upsert: true, new: true },
+  );
+
+  // ── Broadcast review:queued Event via WebSocket ────────────────────────
+  broadcastReviewEvent({
+    type: 'review:queued',
+    payload: pendingReview.toJSON(),
+    timestamp: new Date().toISOString(),
+  });
 
   // ── Enqueue review job ────────────────────────────────────────────────
   const payload: ReviewJobPayload = {

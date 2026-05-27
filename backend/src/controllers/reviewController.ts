@@ -12,11 +12,55 @@ export const getReviews = async (req: Request, res: Response, next: NextFunction
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    const totalItems = await Review.countDocuments();
+    const queryObj: any = {};
+
+    // Filter by status
+    if (req.query.status && req.query.status !== 'all') {
+      queryObj.status = req.query.status;
+    }
+
+    // Filter by repository full name (case insensitive partial match)
+    if (req.query.repository) {
+      queryObj['repository.fullName'] = { $regex: req.query.repository as string, $options: 'i' };
+    }
+
+    // Filter by date range
+    if (req.query.dateFrom || req.query.dateTo) {
+      queryObj.createdAt = {};
+      if (req.query.dateFrom) {
+        queryObj.createdAt.$gte = new Date(req.query.dateFrom as string);
+      }
+      if (req.query.dateTo) {
+        queryObj.createdAt.$lte = new Date(req.query.dateTo as string);
+      }
+    }
+
+    // Filter by finding severity
+    if (req.query.severity) {
+      queryObj['findings.severity'] = req.query.severity;
+    }
+
+    // General search filter (looks in prTitle, repository.fullName, and summary)
+    if (req.query.search) {
+      const searchRegex = { $regex: req.query.search as string, $options: 'i' };
+      queryObj.$or = [
+        { prTitle: searchRegex },
+        { 'repository.fullName': searchRegex },
+        { summary: searchRegex }
+      ];
+    }
+
+    const totalItems = await Review.countDocuments(queryObj);
     const totalPages = Math.ceil(totalItems / limit);
 
-    const reviews = await Review.find()
-      .sort({ createdAt: -1 })
+    // Support sorting
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const sortOrder = (req.query.sortOrder as string) === 'asc' ? 1 : -1;
+    const sortObj: any = {};
+    sortObj[sortBy] = sortOrder;
+
+    const reviews = await Review.find(queryObj)
+      .sort(sortObj)
       .skip(skip)
       .limit(limit);
 

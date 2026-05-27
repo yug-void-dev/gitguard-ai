@@ -8,7 +8,7 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 export interface IFinding {
   file: string;
   line: number;
-  severity: 'high' | 'medium' | 'low' | 'info';
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
   message: string;
   suggestion: string;
   confidence: number;
@@ -39,7 +39,7 @@ export interface IReview extends Document {
 const findingSchema = new Schema<IFinding>({
   file: { type: String, required: true },
   line: { type: Number, required: true },
-  severity: { type: String, enum: ['high', 'medium', 'low', 'info'], required: true },
+  severity: { type: String, enum: ['critical', 'high', 'medium', 'low', 'info'], required: true },
   message: { type: String, required: true },
   suggestion: { type: String, required: true },
   confidence: { type: Number, min: 0, max: 1 },
@@ -55,7 +55,7 @@ const reviewSchema = new Schema<IReview>(
     prNumber: { type: Number, required: true },
     prTitle: { type: String, required: true },
     status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
-    triggeredBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    triggeredBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     findings: [findingSchema],
     summary: { type: String },
     metrics: {

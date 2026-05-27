@@ -37,6 +37,7 @@ import { logger } from '../lib/logger';
 import { ReviewJobPayload, AnalysisResult, AnalysisFinding } from '../types/analysis';
 import { processDiff } from '../github/diffProcessor';
 import { routeToLLM } from '../llm/llmRouter';
+import { broadcastReviewEvent } from '../websocket';
 import axios from 'axios';
 import pino from 'pino';
 
@@ -72,7 +73,7 @@ export function startWorker(): Worker<ReviewJobPayload> {
     );
   });
 
-  _worker.on('failed', (job, error) => {
+  _worker.on('failed', async (job, error) => {
     logger.error(
       {
         jobId: job?.id,
@@ -83,6 +84,35 @@ export function startWorker(): Worker<ReviewJobPayload> {
       },
       '❌ Review job failed',
     );
+
+    if (job) {
+      const { repositoryFullName, prNumber } = job.data;
+      try {
+        const failedReview = await Review.findOneAndUpdate(
+          {
+            'repository.fullName': repositoryFullName,
+            prNumber,
+          },
+          {
+            $set: {
+              status: 'failed',
+              summary: `Analysis failed: ${error.message || 'Unknown queue error'}`,
+            },
+          },
+          { upsert: true, new: true },
+        );
+
+        if (failedReview) {
+          broadcastReviewEvent({
+            type: 'review:failed',
+            payload: failedReview.toJSON(),
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        logger.error({ err }, 'Failed to save and broadcast review failure event');
+      }
+    }
   });
 
   _worker.on('error', (error) => {
@@ -209,7 +239,7 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     async () => {
       const [owner, repoName] = repositoryFullName.split('/');
 
-      await Review.findOneAndUpdate(
+      const updatedReview = await Review.findOneAndUpdate(
         {
           'repository.fullName': repositoryFullName,
           prNumber,
@@ -240,6 +270,14 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
         },
         { upsert: true, new: true },
       );
+
+      if (updatedReview) {
+        broadcastReviewEvent({
+          type: 'review:completed',
+          payload: updatedReview.toJSON(),
+          timestamp: new Date().toISOString(),
+        });
+      }
     },
   );
 

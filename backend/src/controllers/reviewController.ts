@@ -1,88 +1,91 @@
-<<<<<<< HEAD
+/**
+ * @file src/controllers/reviewController.ts
+ * @description Controller for review retrieval and listing.
+ */
+
 import { Request, Response, NextFunction } from 'express';
 import { Review } from '../models/Review';
-import { logger } from '../lib/logger';
+import { AppError, DatabaseError, HttpStatus } from '../lib/errors';
 
-/**
- * GET /api/reviews
- * Fetch all reviews, sorted by creation date descending, with pagination.
- */
-export const getReviews = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const VALID_STATUSES = ['pending', 'completed', 'failed'] as const;
+const VALID_SEVERITIES = ['high', 'medium', 'low', 'info'] as const;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+}
+
+export const getReviews = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit as string, 10) || 10);
+    const status = req.query.status as string | undefined;
+    const repository = (req.query.repository as string | undefined)?.trim();
+    const severity = req.query.severity as string | undefined;
+    const search = (req.query.search as string | undefined)?.trim();
+
+    const filter: Record<string, unknown> = {};
+
+    if (status && VALID_STATUSES.includes(status as any)) {
+      filter.status = status;
+    }
+
+    if (repository) {
+      filter['repository.fullName'] = repository;
+    }
+
+    if (severity && VALID_SEVERITIES.includes(severity as any)) {
+      filter['findings.severity'] = severity;
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(escapeRegExp(search), 'i');
+      const orConditions: Array<Record<string, unknown>> = [
+        { 'repository.fullName': searchRegex },
+        { 'repository.owner': searchRegex },
+        { 'repository.name': searchRegex },
+        { prTitle: searchRegex },
+      ];
+
+      const numericSearch = Number(search);
+      if (!Number.isNaN(numericSearch)) {
+        orConditions.push({ prNumber: numericSearch });
+      }
+
+      filter.$or = orConditions;
+    }
+
     const skip = (page - 1) * limit;
 
-    const queryObj: any = {};
-
-    // Filter by status
-    if (req.query.status && req.query.status !== 'all') {
-      queryObj.status = req.query.status;
-    }
-
-    // Filter by repository full name (case insensitive partial match)
-    if (req.query.repository) {
-      queryObj['repository.fullName'] = { $regex: req.query.repository as string, $options: 'i' };
-    }
-
-    // Filter by date range
-    if (req.query.dateFrom || req.query.dateTo) {
-      queryObj.createdAt = {};
-      if (req.query.dateFrom) {
-        queryObj.createdAt.$gte = new Date(req.query.dateFrom as string);
-      }
-      if (req.query.dateTo) {
-        queryObj.createdAt.$lte = new Date(req.query.dateTo as string);
-      }
-    }
-
-    // Filter by finding severity
-    if (req.query.severity) {
-      queryObj['findings.severity'] = req.query.severity;
-    }
-
-    // General search filter (looks in prTitle, repository.fullName, and summary)
-    if (req.query.search) {
-      const searchRegex = { $regex: req.query.search as string, $options: 'i' };
-      queryObj.$or = [
-        { prTitle: searchRegex },
-        { 'repository.fullName': searchRegex },
-        { summary: searchRegex }
-      ];
-    }
-
-    const totalItems = await Review.countDocuments(queryObj);
+    const totalItems = await Review.countDocuments();
     const totalPages = Math.ceil(totalItems / limit);
 
-    // Support sorting
-    const sortBy = (req.query.sortBy as string) || 'createdAt';
-    const sortOrder = (req.query.sortOrder as string) === 'asc' ? 1 : -1;
-    const sortObj: any = {};
-    sortObj[sortBy] = sortOrder;
-
-    const reviews = await Review.find(queryObj)
-      .sort(sortObj)
+    const reviews = await Review.find()
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     res.status(200).json({
       success: true,
       reviews,
       totalItems,
       totalPages,
-      currentPage: page
+      currentPage: page,
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch reviews');
-    next(error);
+    next(new DatabaseError('Failed to fetch reviews'));
   }
 };
 
-/**
- * GET /api/reviews/stats
- * Fetch aggregate statistics for all reviews.
- */
-export const getReviewStats = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getReviewStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const stats = await Review.aggregate([
       {
@@ -93,9 +96,9 @@ export const getReviewStats = async (_req: Request, res: Response, next: NextFun
           pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
           failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
           totalVulnerabilities: { $sum: '$metrics.vulnerabilitiesCount' },
-          averageScore: { $avg: '$metrics.codeQualityScore' }
-        }
-      }
+          averageScore: { $avg: '$metrics.codeQualityScore' },
+        },
+      },
     ]);
 
     const result = stats[0] || {
@@ -104,52 +107,12 @@ export const getReviewStats = async (_req: Request, res: Response, next: NextFun
       pending: 0,
       failed: 0,
       totalVulnerabilities: 0,
-      averageScore: 0
+      averageScore: 0,
     };
 
     res.status(200).json({ success: true, stats: result });
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch review stats');
-    next(error);
-  }
-};
-
-/**
- * GET /api/reviews/:id
- * Fetch a single review by its ID.
- */
-export const getReviewById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const review = await Review.findById(id);
-    if (!review) {
-      res.status(404).json({ success: false, message: 'Review not found' });
-      return;
-    }
-    res.status(200).json({ success: true, review });
-  } catch (error) {
-    logger.error({ error }, 'Failed to fetch review');
-    next(error);
-=======
-/**
- * @file src/controllers/reviewController.ts
- * @description Controller for review retrieval and listing.
- */
-
-import { Request, Response, NextFunction } from 'express';
-import { Review } from '../models/Review';
-import { AppError, DatabaseError, HttpStatus } from '../lib/errors';
-
-export const getReviews = async (
-  _req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const reviews = await Review.find().sort({ updatedAt: -1 }).lean();
-    res.status(200).json({ success: true, reviews });
-  } catch (error) {
-    next(new DatabaseError('Failed to fetch reviews'));
+    next(new DatabaseError('Failed to fetch review stats'));
   }
 };
 
@@ -158,7 +121,7 @@ export const getReviewById = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const { reviewId } = req.params;
+  const reviewId = req.params.reviewId || req.params.id;
 
   try {
     const review = await Review.findById(reviewId).lean();
@@ -171,6 +134,5 @@ export const getReviewById = async (
     res.status(200).json({ success: true, review });
   } catch (error) {
     next(new DatabaseError('Failed to fetch review'));
->>>>>>> 828c344 (Save local changes)
   }
 };

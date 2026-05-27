@@ -25,20 +25,26 @@ export async function callGroq(
 
   logger.debug({ model: 'llama-3.3-70b-versatile', promptChars: userPrompt.length }, 'Calling Groq');
 
-  const completion = await getClient().chat.completions.create({
-    model:           'llama-3.3-70b-versatile',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userPrompt },
-    ],
-    max_tokens:      options.maxTokens ?? env.LLM_MAX_TOKENS,
-    temperature:     options.temperature ?? 0.1,
-    response_format: { type: 'json_object' },
-  });
+  try {
+    const completion = await getClient().chat.completions.create({
+      model:           'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt },
+      ],
+      max_tokens:      options.maxTokens ?? env.LLM_MAX_TOKENS,
+      temperature:     options.temperature ?? 0.1,
+      response_format: { type: 'json_object' },
+      user:            options.user ?? 'gitguard-ai-system',
+    });
 
-  return {
-    text:             completion.choices[0]?.message?.content ?? '',
-    promptTokens:     completion.usage?.prompt_tokens,
-    completionTokens: completion.usage?.completion_tokens,
-  };
+    return {
+      text:             completion.choices[0]?.message?.content ?? '',
+      promptTokens:     completion.usage?.prompt_tokens,
+      completionTokens: completion.usage?.completion_tokens,
+    };
+  } catch (error) {
+    logger.error({ error, model: 'llama-3.3-70b-versatile' }, 'Error calling Groq API');
+    throw error;
+  }
 }

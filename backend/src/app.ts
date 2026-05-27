@@ -19,7 +19,6 @@ import healthRoutes from './routes/health';
 import authRoutes from './routes/authRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import queueRoutes from './routes/queueRoutes';
-import reviewRoutes from './routes/reviewRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import repositoryRoutes from './routes/repositoryRoutes';
 import githubRoutes from './routes/githubRoutes';
@@ -96,9 +95,6 @@ export function createApp(): Application {
 
   // Queue metrics route (authenticated)
   app.use('/api/queue', express.json(), queueRoutes);
-
-  // Reviews route (authenticated)
-  app.use('/api/reviews', express.json(), reviewRoutes);
 
   // Notifications route (authenticated)
   app.use('/api/notifications', express.json(), notificationRoutes);

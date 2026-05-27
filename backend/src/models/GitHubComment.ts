@@ -137,6 +137,18 @@ export interface IGitHubComment extends Document {
 
   // Timestamps
   createdAt: Date;
+
+  // Methods
+  addAuditEvent(
+    type: ICommentEvent['type'],
+    details?: Record<string, unknown>,
+    error?: string,
+  ): void;
+  markAsPosted(githubCommentId: number): void;
+  markAsFailed(code: string, message: string): void;
+  applySuggestion(suggestion: IAppliedSuggestion): void;
+  getAppliedCount(): number;
+  softDelete(): void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -314,6 +326,7 @@ githubCommentSchema.index({ 'auditEvents.type': 1, 'auditEvents.timestamp': -1 }
  * Add an event to the audit trail.
  */
 githubCommentSchema.methods.addAuditEvent = function (
+  this: IGitHubComment,
   type: ICommentEvent['type'],
   details?: Record<string, unknown>,
   error?: string,
@@ -329,7 +342,7 @@ githubCommentSchema.methods.addAuditEvent = function (
 /**
  * Mark comment as successfully posted.
  */
-githubCommentSchema.methods.markAsPosted = function (githubCommentId: number): void {
+githubCommentSchema.methods.markAsPosted = function (this: IGitHubComment, githubCommentId: number): void {
   this.githubCommentId = githubCommentId;
   this.postedAt = new Date();
   this.status = 'posted';
@@ -340,7 +353,7 @@ githubCommentSchema.methods.markAsPosted = function (githubCommentId: number): v
 /**
  * Mark comment as failed to post.
  */
-githubCommentSchema.methods.markAsFailed = function (code: string, message: string): void {
+githubCommentSchema.methods.markAsFailed = function (this: IGitHubComment, code: string, message: string): void {
   this.status = 'failed';
   this.lastError = {
     code,
@@ -355,6 +368,7 @@ githubCommentSchema.methods.markAsFailed = function (code: string, message: stri
  * Apply a suggestion and track it.
  */
 githubCommentSchema.methods.applySuggestion = function (
+  this: IGitHubComment,
   suggestion: IAppliedSuggestion,
 ): void {
   if (!this.appliedSuggestions) this.appliedSuggestions = [];
@@ -368,14 +382,14 @@ githubCommentSchema.methods.applySuggestion = function (
 /**
  * Get summary of applied suggestions.
  */
-githubCommentSchema.methods.getAppliedCount = function (): number {
+githubCommentSchema.methods.getAppliedCount = function (this: IGitHubComment): number {
   return (this.appliedSuggestions ?? []).filter((s) => s.status === 'applied').length;
 };
 
 /**
  * Soft delete the comment.
  */
-githubCommentSchema.methods.softDelete = function (): void {
+githubCommentSchema.methods.softDelete = function (this: IGitHubComment): void {
   this.deletedAt = new Date();
   this.status = 'archived';
   this.addAuditEvent('deleted');

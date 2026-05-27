@@ -93,7 +93,6 @@ function escapeRegex(s: string): string {
  */
 export function evaluateFindingAgainstSpec(spec: IRepositoryRuleSpec, finding: { severity: string; confidence: number; category?: string; file?: string }): boolean {
 	if (!spec) return true;
-	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 
 	// If only security findings are allowed
 	if (spec.onlySecurity && finding.category && finding.category !== 'security') return false;

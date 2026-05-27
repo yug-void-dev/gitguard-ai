@@ -37,6 +37,8 @@ export const FEED_POLL_INTERVAL_MS = 10_000;
 export const STORAGE_KEYS = {
   THEME: 'gg_theme',
   SIDEBAR_COLLAPSED: 'gg_sidebar_collapsed',
+  EMAIL_ALERTS: 'gg_email_alerts',
+  AUTO_REVIEW: 'gg_auto_review',
 } as const;
 
 // ─── Severity ordering (high → low priority) ──────────────────────────────────

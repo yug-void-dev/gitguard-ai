@@ -12,6 +12,8 @@ import { AppBackground } from '../components/layout/AppBackground';
 import { T } from '../constants/theme';
 import { DashboardSHead } from '../components/dashboard/DashboardQuickActions';
 
+import { STORAGE_KEYS } from '../constants/config';
+
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 // ─── Custom Animated Toggle Switch ──────────────────────────────────────────
@@ -107,9 +109,43 @@ const PreferenceToggle: React.FC<{
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
-  const [darkMode, setDarkMode] = useState(true);
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [autoReview, setAutoReview] = useState(false);
+
+  const [emailAlerts, setEmailAlerts] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.EMAIL_ALERTS);
+      return stored !== 'false'; // default to true
+    } catch {
+      return true;
+    }
+  });
+
+  const [autoReview, setAutoReview] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.AUTO_REVIEW);
+      return stored === 'true'; // default to false
+    } catch {
+      return false;
+    }
+  });
+
+  const handleEmailAlertsChange = (val: boolean) => {
+    setEmailAlerts(val);
+    try {
+      localStorage.setItem(STORAGE_KEYS.EMAIL_ALERTS, String(val));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleAutoReviewChange = (val: boolean) => {
+    setAutoReview(val);
+    try {
+      localStorage.setItem(STORAGE_KEYS.AUTO_REVIEW, String(val));
+    } catch {
+      // ignore
+    }
+  };
+
   const navigate = useNavigate();
 
   const containerVariants = {
@@ -384,24 +420,17 @@ const SettingsPage: React.FC = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <PreferenceToggle
-                  label="Dark Mode"
-                  desc="Enable premium dark-mode glowing aesthetics across panels."
-                  checked={darkMode}
-                  onChange={setDarkMode}
-                  color={T.cyan}
-                />
-                <PreferenceToggle
                   label="Email Alerts"
                   desc="Receive automated email reports for webhook scan results."
                   checked={emailAlerts}
-                  onChange={setEmailAlerts}
+                  onChange={handleEmailAlertsChange}
                   color={T.violet}
                 />
                 <PreferenceToggle
                   label="Auto Review"
                   desc="Automatically start reviewing when repositories are added."
                   checked={autoReview}
-                  onChange={setAutoReview}
+                  onChange={handleAutoReviewChange}
                   color={T.green}
                 />
               </div>

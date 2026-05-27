@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 const T = {
   cyan: '#06b6d4',
@@ -11,42 +12,67 @@ const T = {
   muted: '#475569',
 };
 
-const LOGS = [
-  { t: '00:01', lvl: 'INFO', msg: 'Webhook received: PR #44 opened' },
-  { t: '00:02', lvl: 'INFO', msg: 'HMAC signature validated ✓' },
-  { t: '00:03', lvl: 'INFO', msg: 'Fetching diff via Octokit SDK...' },
-  { t: '00:04', lvl: 'WARN', msg: 'Large diff detected — chunking...' },
-  { t: '00:06', lvl: 'INFO', msg: 'Sending to Gemini 1.5 Flash...' },
-  { t: '00:09', lvl: 'CRIT', msg: 'SQL injection risk in query builder' },
-  { t: '00:09', lvl: 'HIGH', msg: 'Unhandled rejection in async handler' },
-  { t: '00:10', lvl: 'INFO', msg: 'Review comment posted to PR #44 ✓' },
-];
-
 const LC: Record<string, string> = {
   INFO: T.cyan,
   WARN: T.amber,
   CRIT: T.red,
   HIGH: T.orange,
+  SUCC: T.green,
 };
 
 export function DashboardTerminal() {
-  const [vis, setVis] = useState(0);
+  const { events, isConnected } = useWebSocket(true);
+  const [terminalLines, setTerminalLines] = useState<Array<{ t: string; lvl: string; msg: string }>>([
+    { t: new Date().toLocaleTimeString().slice(0, 5), lvl: 'INFO', msg: 'Initializing Sentinel AI agent...' },
+    { t: new Date().toLocaleTimeString().slice(0, 5), lvl: 'INFO', msg: 'System integrity verification complete ✓' },
+  ]);
   const end = useRef<HTMLDivElement>(null);
-  
+
+  // Tracks connection updates
   useEffect(() => {
-    let i = 0;
-    const id = setInterval(() => {
-      i++;
-      setVis(i);
-      if (i >= LOGS.length) clearInterval(id);
-    }, 280);
-    return () => clearInterval(id);
-  }, []);
-  
+    setTerminalLines((prev) => [
+      ...prev,
+      {
+        t: new Date().toLocaleTimeString().slice(0, 5),
+        lvl: 'INFO',
+        msg: isConnected
+          ? 'Connected to Sentinel real-time socket server ✓'
+          : 'Connecting to real-time socket... falling back to polling feed.',
+      },
+    ]);
+  }, [isConnected]);
+
+  // Processes incoming websocket event updates
+  useEffect(() => {
+    if (events.length > 0) {
+      const latestEvent = events[0];
+      const timeStr = new Date(latestEvent.timestamp || new Date()).toLocaleTimeString().slice(0, 5);
+      let lvl = 'INFO';
+      let msg = '';
+
+      if (latestEvent.type === 'review:queued') {
+        lvl = 'INFO';
+        msg = `PR #${latestEvent.payload.prNumber || '?'} enqueued for AI review: "${latestEvent.payload.prTitle || ''}"`;
+      } else if (latestEvent.type === 'review:completed') {
+        lvl = 'SUCC';
+        const score = latestEvent.payload.metrics?.codeQualityScore ?? 100;
+        const bugs = latestEvent.payload.metrics?.vulnerabilitiesCount ?? 0;
+        msg = `PR #${latestEvent.payload.prNumber || '?'} review complete ✓ Score: ${score}% | Vulnerabilities: ${bugs}`;
+      } else if (latestEvent.type === 'review:failed') {
+        lvl = 'CRIT';
+        msg = `PR #${latestEvent.payload.prNumber || '?'} review pipeline failed ✗`;
+      }
+
+      if (msg) {
+        setTerminalLines((prev) => [...prev, { t: timeStr, lvl, msg }]);
+      }
+    }
+  }, [events]);
+
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [vis]);
-  
+  }, [terminalLines]);
+
   return (
     <div
       style={{
@@ -106,7 +132,7 @@ export function DashboardTerminal() {
           gap: 2,
         }}
       >
-        {LOGS.slice(0, vis).map((l, i) => (
+        {terminalLines.map((l, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, x: -5 }}
@@ -134,19 +160,17 @@ export function DashboardTerminal() {
             <span style={{ color: '#94a3b8' }}>{l.msg}</span>
           </motion.div>
         ))}
-        {vis < LOGS.length && (
-          <motion.span
-            animate={{ opacity: [1, 0] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
-            style={{
-              color: T.cyan,
-              fontFamily: "'Fira Code',monospace",
-              fontSize: 10,
-            }}
-          >
-            ▋
-          </motion.span>
-        )}
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity }}
+          style={{
+            color: T.cyan,
+            fontFamily: "'Fira Code',monospace",
+            fontSize: 10,
+          }}
+        >
+          ▋
+        </motion.span>
         <div ref={end} />
       </div>
     </div>

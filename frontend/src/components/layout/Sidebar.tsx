@@ -18,6 +18,8 @@ import {
 import SidebarLink from './SidebarLink';
 import { ROUTES } from '../../constants/routes';
 import { APP_NAME } from '../../constants/config';
+import { useTheme } from '../../hooks/useTheme';
+import { T } from '../../constants/theme';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -33,6 +35,9 @@ const NAV_ITEMS = [
 ] as const;
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   return (
     <motion.aside
       animate={{ width: collapsed ? 68 : 240 }}
@@ -44,8 +49,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         top: 0,
         display: 'flex',
         flexDirection: 'column',
-        background: 'linear-gradient(180deg,rgba(7,8,22,0.99) 0%,rgba(9,10,28,0.98) 100%)',
-        borderRight: '1px solid rgba(99,102,241,0.18)',
+        background: isLight
+          ? 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)'
+          : 'linear-gradient(180deg,rgba(7,8,22,0.99) 0%,rgba(9,10,28,0.98) 100%)',
+        borderRight: `1px solid ${T.border}`,
         backdropFilter: 'blur(20px)',
         zIndex: 50,
         flexShrink: 0,
@@ -59,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
-          borderBottom: '1px solid rgba(99,102,241,0.12)',
+          borderBottom: `1px solid ${T.border}`,
           /* padding changes based on state */
           padding: collapsed ? '0 14px' : '0 14px',
           justifyContent: collapsed ? 'center' : 'space-between',
@@ -124,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                   fontWeight: 800,
                   fontSize: 14,
                   letterSpacing: -0.3,
-                  color: '#f1f5f9',
+                  color: T.text,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -222,7 +229,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            style={{ padding: '10px 12px', borderTop: '1px solid rgba(99,102,241,0.1)' }}
+            style={{ padding: '10px 12px', borderTop: `1px solid ${T.border}` }}
           >
             <div style={{
               display: 'flex',
@@ -230,18 +237,18 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               gap: 8,
               padding: '7px 10px',
               borderRadius: 9,
-              background: 'rgba(16,185,129,0.07)',
-              border: '1px solid rgba(16,185,129,0.15)',
+              background: `${T.green}12`,
+              border: `1px solid ${T.green}25`,
             }}>
               <span style={{
                 width: 7, height: 7, borderRadius: '50%',
-                background: '#10b981',
-                boxShadow: '0 0 6px rgba(16,185,129,0.8)',
+                background: T.green,
+                boxShadow: `0 0 6px ${T.green}80`,
                 flexShrink: 0,
                 display: 'inline-block',
               }} className="animate-pulse" />
               <span style={{
-                fontSize: 11, color: '#64748b', fontWeight: 500,
+                fontSize: 11, color: T.sub, fontWeight: 500,
                 fontFamily: 'var(--font-body,Inter)',
               }}>
                 Sentinel Active

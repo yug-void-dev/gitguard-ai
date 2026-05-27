@@ -25,6 +25,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 import Avatar from '../common/Avatar';
 import { getNotifications, type Notification } from '../../services/notification.service';
+import { useTheme } from '../../hooks/useTheme';
+import { T } from '../../constants/theme';
 
 interface NavbarProps {
   onMenuClick: () => void; // kept for potential mobile use, not rendered
@@ -73,6 +75,8 @@ function eventLabel(n: Notification): string {
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const navigate = useNavigate();
 
   // ── User dropdown ──
@@ -153,8 +157,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         alignItems: 'center',
         justifyContent: 'flex-end', // no left hamburger — sidebar owns toggle
         padding: '0 20px',
-        borderBottom: '1px solid rgba(99,102,241,0.12)',
-        background: 'rgba(6,7,20,0.82)',
+        borderBottom: `1px solid ${T.border}`,
+        background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(6,7,20,0.82)',
         backdropFilter: 'blur(14px)',
         position: 'sticky',
         top: 0,
@@ -172,10 +176,10 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
           title="Notifications"
           style={{
             position: 'relative',
-            background: notifOpen ? 'rgba(99,102,241,0.14)' : 'rgba(99,102,241,0.06)',
-            border: `1px solid ${notifOpen ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.18)'}`,
+            background: notifOpen ? `${T.cyan}18` : `rgba(0,0,0,0.02)`,
+            border: `1px solid ${notifOpen ? T.cyan + '40' : T.border}`,
             borderRadius: 10,
-            color: notifOpen ? '#a5b4fc' : '#94a3b8',
+            color: notifOpen ? T.cyan : T.sub,
             cursor: 'pointer',
             width: 38,
             height: 38,
@@ -207,7 +211,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 justifyContent: 'center',
                 padding: '0 3px',
                 boxShadow: '0 0 8px rgba(99,102,241,0.6)',
-                border: '1.5px solid rgba(6,7,20,0.9)',
+                border: `1.5px solid ${isLight ? '#fff' : 'rgba(6,7,20,0.9)'}`,
               }}
             >
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -229,11 +233,11 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 right: 0,
                 width: 360,
                 maxHeight: 480,
-                background: 'rgba(9,10,26,0.98)',
-                border: '1px solid rgba(99,102,241,0.25)',
+                background: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(9,10,26,0.98)',
+                border: `1px solid ${T.border}`,
                 borderRadius: 14,
                 backdropFilter: 'blur(20px)',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.08)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(99,102,241,0.08)',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
@@ -430,22 +434,22 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: 'rgba(99,102,241,0.08)',
-            border: '1px solid rgba(99,102,241,0.2)',
+            background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${T.border}`,
             borderRadius: 10,
             padding: '5px 10px 5px 5px',
             cursor: 'pointer',
             transition: 'background 0.2s',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.15)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)'; }}
         >
           <Avatar src={user?.avatarUrl} name={user?.login ?? 'User'} size={28} />
           <span style={{
             fontFamily: 'var(--font-body,Inter)',
             fontSize: 13,
             fontWeight: 500,
-            color: '#e2e8f0',
+            color: T.text,
             maxWidth: 100,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -455,7 +459,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
           </span>
           <ChevronDown
             size={13}
-            color="#94a3b8"
+            color={T.sub}
             style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
           />
         </motion.button>
@@ -473,21 +477,21 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 top: 'calc(100% + 8px)',
                 right: 0,
                 minWidth: 190,
-                background: 'rgba(9,10,26,0.98)',
-                border: '1px solid rgba(99,102,241,0.25)',
+                background: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(9,10,26,0.98)',
+                border: `1px solid ${T.border}`,
                 borderRadius: 12,
                 backdropFilter: 'blur(14px)',
-                boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
                 overflow: 'hidden',
                 zIndex: 200,
               }}
             >
               {/* User info */}
-              <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
-                <p style={{ color: '#f1f5f9', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body,Inter)' }}>
+              <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.border}` }}>
+                <p style={{ color: T.text, fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body,Inter)' }}>
                   {user?.login}
                 </p>
-                <p style={{ color: '#64748b', fontSize: 11, marginTop: 2, fontFamily: 'var(--font-body,Inter)' }}>
+                <p style={{ color: T.sub, fontSize: 11, marginTop: 2, fontFamily: 'var(--font-body,Inter)' }}>
                   {user?.email}
                 </p>
               </div>

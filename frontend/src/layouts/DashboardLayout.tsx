@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 import { STORAGE_KEYS } from '../constants/config';
+import { useTheme } from '../hooks/useTheme';
 
 /**
  * DashboardLayout assembles the main application chrome:
@@ -22,6 +23,7 @@ import { STORAGE_KEYS } from '../constants/config';
  *  └──────────┴────────────────────────────┘
  */
 const DashboardLayout: React.FC = () => {
+  const { theme } = useTheme(); // Force re-render on theme change
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';

@@ -67,13 +67,15 @@ repositoryRuleSchema.index({ repositoryId: 1, profileName: 1 }, { unique: true }
 
 repositoryRuleSchema.methods.matchesPath = function (path: string): boolean {
 	// simple glob-ish matching: treat ignoredPaths as substring or simple glob '*'
+	// NOTE: We deliberately avoid new RegExp() on user-supplied strings to prevent
+	// Regular Expression Denial of Service (ReDoS) attacks.
 	if (!this.spec || !Array.isArray(this.spec.ignoredPaths)) return true;
 	for (const p of this.spec.ignoredPaths) {
 		if (!p) continue;
 		if (p.includes('*')) {
-			// convert simple glob to regex
-			const re = new RegExp('^' + p.split('*').map(escapeRegex).join('.*') + '$');
-			if (re.test(path)) return false;
+			// Safe glob match: split on '*' and verify each literal segment appears
+			// in order within the path — avoids dynamic RegExp construction.
+			if (matchesGlob(path, p)) return false;
 		} else if (path.includes(p)) {
 			return false;
 		}
@@ -81,8 +83,27 @@ repositoryRuleSchema.methods.matchesPath = function (path: string): boolean {
 	return true;
 };
 
-function escapeRegex(s: string): string {
-	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/**
+ * Safe glob matcher — checks if `path` matches a simple glob pattern containing '*'.
+ * Splits on '*' and verifies each literal segment appears in order.
+ * This avoids dynamic RegExp construction and prevents ReDoS vulnerabilities.
+ */
+function matchesGlob(path: string, pattern: string): boolean {
+	const segments = pattern.split('*');
+	let remaining = path;
+	for (let i = 0; i < segments.length; i++) {
+		const seg = segments[i];
+		if (seg === '') continue; // leading/trailing/consecutive wildcards
+		const idx = remaining.indexOf(seg);
+		if (idx === -1) return false;
+		// First segment must match at the start (anchored to '^')
+		if (i === 0 && idx !== 0) return false;
+		remaining = remaining.slice(idx + seg.length);
+	}
+	// Last segment must consume to the end (anchored to '$')
+	const lastSeg = segments[segments.length - 1];
+	if (lastSeg !== '' && remaining.length > 0) return false;
+	return true;
 }
 
 // --- Static helpers ---

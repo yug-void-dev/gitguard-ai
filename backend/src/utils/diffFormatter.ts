@@ -14,7 +14,7 @@
  */
 
 import { IFinding } from '../models/Review';
-import { ProcessedFile, DiffChunk, ProcessedDiff } from '../github/diffProcessor';
+import { ProcessedFile } from '../github/diffProcessor'; // DiffChunk, ProcessedDiff intentionally omitted — not used in this module
 import { PRContext } from '../types/analysis';
 import { logger } from '../lib/logger';
 
@@ -101,7 +101,7 @@ export interface MarkdownComment {
 export function formatDiffForFrontend(
   rawDiff: string,
   findings: IFinding[],
-  context: PRContext,
+  _context: PRContext,
   eventId: string,
 ): FormattedDiffCollection {
   const log = logger.child({ module: 'diffFormatter.formatDiffForFrontend', eventId });
@@ -370,8 +370,6 @@ function detectChangeType(
 function parseHunks(fileDiff: string, findings: IFinding[]): DiffHunk[] {
   const hunks: DiffHunk[] = [];
   const hunkMatches = Array.from(fileDiff.matchAll(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/g));
-
-  let lastHunkEnd = 0;
 
   for (let i = 0; i < hunkMatches.length; i++) {
     const match = hunkMatches[i];

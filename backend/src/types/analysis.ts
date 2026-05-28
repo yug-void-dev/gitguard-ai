@@ -199,6 +199,9 @@ export interface ReviewJobPayload {
   /** Optional raw diff content (used for manual testing/triggers) */
   rawDiff?: string;
 
+  /** GitHub PAT or installation token — enables comment + label posting */
+  githubToken?: string;
+
   /** Assembled PR context */
   context: PRContext;
 

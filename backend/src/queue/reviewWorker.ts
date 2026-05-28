@@ -40,6 +40,9 @@ import { routeToLLM } from '../llm/llmRouter';
 import { broadcastReviewEvent } from '../websocket';
 import axios from 'axios';
 import pino from 'pino';
+import { postReviewComment } from '../services/commentService';
+import { applyPRLabels } from '../services/labelService';
+import { postSuggestions } from '../services/suggestionService';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -280,6 +283,83 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
       }
     },
   );
+
+  // ── Stage 8: Post GitHub comments + auto-labels ────────────────────
+  // Only post if we have a GitHub token in the job payload
+  if (job.data.githubToken) {
+    const [owner, repoName] = repositoryFullName.split('/');
+    const headSha = job.data.headSha ?? '';
+
+    await measureStage(
+      'post-comments',
+      jobId,
+      repositoryFullName,
+      async () => {
+        // Fetch the saved review to get the full IFinding[] array
+        const savedReview = await Review.findOne({
+          'repository.fullName': repositoryFullName,
+          prNumber,
+        });
+
+        if (!savedReview) {
+          log.warn('Could not find saved review for comment posting — skipping');
+          return;
+        }
+
+        // Post rich Markdown summary + inline review comments
+        const commentResult = await postReviewComment({
+          token: job.data.githubToken!,
+          owner,
+          repo: repoName,
+          prNumber,
+          headSha,
+          findings: savedReview.findings,
+          context,
+          metrics: {
+            codeQualityScore: metrics.codeQualityScore,
+            vulnerabilitiesCount: vulnerabilities.length,
+            performanceIssuesCount: enrichedFindings.filter(
+              (f) => f.category === 'performance',
+            ).length,
+          },
+          eventId,
+        });
+
+        // Post one-click suggestion comments for actionable findings
+        const suggestionResult = await postSuggestions({
+          token: job.data.githubToken!,
+          owner,
+          repo: repoName,
+          prNumber,
+          headSha,
+          findings: savedReview.findings,
+          eventId,
+        });
+
+        // Apply PR labels based on findings
+        const labelResult = await applyPRLabels(
+          job.data.githubToken!,
+          owner,
+          repoName,
+          prNumber,
+          savedReview.findings,
+          eventId,
+        );
+
+        log.info(
+          {
+            summaryCommentId: commentResult.summaryCommentId,
+            inlineComments: commentResult.inlineCommentsPosted,
+            suggestions: suggestionResult.suggestionsPosted,
+            labelsApplied: labelResult.labelsApplied,
+          },
+          '✅ GitHub comments + labels posted',
+        );
+      },
+    );
+  } else {
+    log.info('No githubToken in job payload — skipping GitHub comment posting');
+  }
 
   log.info(
     {

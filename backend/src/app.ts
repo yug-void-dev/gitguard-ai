@@ -22,6 +22,7 @@ import queueRoutes from './routes/queueRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import repositoryRoutes from './routes/repositoryRoutes';
 import githubRoutes from './routes/githubRoutes';
+import commentRoutes from './routes/commentRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -104,6 +105,9 @@ export function createApp(): Application {
 
   // GitHub proxy integration routes (authenticated)
   app.use('/api/github', express.json(), githubRoutes);
+
+  // Comment, label and suggestion posting routes
+  app.use('/api/comments', express.json(), commentRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

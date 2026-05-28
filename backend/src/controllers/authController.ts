@@ -162,9 +162,10 @@ export const githubCallback = async (
     logger.info({ userId: user._id, login: user.login }, 'User authenticated successfully');
     const firstOrigin = env.ALLOWED_ORIGINS.split(',')[0].trim();
     res.redirect(`${firstOrigin}/dashboard`);
-  } catch (error: any) {
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     logger.error({ error }, 'GitHub OAuth Callback failed');
-    next(new AuthError(`Authentication flow failed: ${error.message || error}`));
+    next(new AuthError(`Authentication flow failed: ${msg}`));
   }
 };
 

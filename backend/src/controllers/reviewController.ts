@@ -29,7 +29,7 @@ export const getReviews = async (
 
     const filter: Record<string, unknown> = {};
 
-    if (status && VALID_STATUSES.includes(status as any)) {
+    if (status && (VALID_STATUSES as readonly string[]).includes(status)) {
       filter.status = status;
     }
 
@@ -37,7 +37,7 @@ export const getReviews = async (
       filter['repository.fullName'] = repository;
     }
 
-    if (severity && VALID_SEVERITIES.includes(severity as any)) {
+    if (severity && (VALID_SEVERITIES as readonly string[]).includes(severity)) {
       filter['findings.severity'] = severity;
     }
 

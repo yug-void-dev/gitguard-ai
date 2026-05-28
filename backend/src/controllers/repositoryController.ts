@@ -29,7 +29,7 @@ async function getUserAccessToken(userId: string): Promise<string | null> {
 
 // ─── Normalize DB doc → frontend ConnectedRepo shape ────────────────────────
 
-function toConnectedRepo(doc: InstanceType<typeof Repository>) {
+function toConnectedRepo(doc: InstanceType<typeof Repository>): Record<string, unknown> {
   return {
     _id: doc._id,
     repositoryFullName: doc.fullName,

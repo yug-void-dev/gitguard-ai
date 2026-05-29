@@ -20,7 +20,10 @@ export interface ReviewStats {
 export const getReviews = async (page = 1, limit = 10): Promise<PaginatedReviews> => {
   const { data } = await api.get<{ success: boolean } & PaginatedReviews>(`/reviews?page=${page}&limit=${limit}`);
   return {
-    reviews: data.reviews,
+    reviews: data.reviews.map((r: any) => ({
+      ...r,
+      id: r.id || r._id,
+    })),
     totalItems: data.totalItems,
     totalPages: data.totalPages,
     currentPage: data.currentPage
@@ -33,8 +36,11 @@ export const getReviewStats = async (): Promise<ReviewStats> => {
 };
 
 export const getReview = async (reviewId: string): Promise<Review> => {
-  const { data } = await api.get<{ success: boolean; review: Review }>(`/reviews/${reviewId}`);
-  return data.review;
+  const { data } = await api.get<{ success: boolean; review: any }>(`/reviews/${reviewId}`);
+  return {
+    ...data.review,
+    id: data.review.id || data.review._id,
+  };
 };
 
 const reviewService = {
@@ -44,3 +50,4 @@ const reviewService = {
 };
 
 export default reviewService;
+

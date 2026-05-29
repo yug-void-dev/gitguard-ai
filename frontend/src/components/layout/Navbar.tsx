@@ -20,11 +20,13 @@ import {
   Clock,
   RefreshCw,
   GitPullRequest,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 import Avatar from '../common/Avatar';
-import { getNotifications, type Notification } from '../../services/notification.service';
+import { getNotifications, clearAllNotifications, dismissNotification, type Notification } from '../../services/notification.service';
 import { useTheme } from '../../hooks/useTheme';
 import { T } from '../../constants/theme';
 
@@ -127,6 +129,36 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
     if (opening) {
       fetchNotifications();
       setUnreadCount(0); // mark read when panel opens
+    }
+  };
+
+  // Dismiss a single notification (optimistic)
+  const handleDismiss = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const prev = notifications;
+    const updated = notifications.filter((n) => n._id !== id);
+    setNotifications(updated);
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await dismissNotification(id);
+    } catch {
+      // Revert on failure
+      setNotifications(prev);
+      setUnreadCount(prev.length);
+    }
+  };
+
+  // Clear all notifications (optimistic)
+  const handleClearAll = async () => {
+    const prev = notifications;
+    setNotifications([]);
+    setUnreadCount(0);
+    try {
+      await clearAllNotifications();
+    } catch {
+      // Revert on failure
+      setNotifications(prev);
+      setUnreadCount(prev.length);
     }
   };
 
@@ -277,24 +309,56 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                     </span>
                   )}
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={fetchNotifications}
-                  title="Refresh"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: 4,
-                    borderRadius: 6,
-                  }}
-                >
-                  <RefreshCw size={13} style={{ animation: notifLoading ? 'spin 1s linear infinite' : 'none' }} />
-                </motion.button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {/* Clear all */}
+                  {notifications.length > 0 && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={handleClearAll}
+                      title="Clear all notifications"
+                      style={{
+                        background: 'none',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        fontFamily: 'var(--font-body,Inter)',
+                        fontWeight: 600,
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+                    >
+                      <Trash2 size={11} />
+                      Clear all
+                    </motion.button>
+                  )}
+                  {/* Refresh */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={fetchNotifications}
+                    title="Refresh"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 4,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <RefreshCw size={13} style={{ animation: notifLoading ? 'spin 1s linear infinite' : 'none' }} />
+                  </motion.button>
+                </div>
               </div>
 
               {/* Body */}
@@ -336,12 +400,13 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                     No notifications yet
                   </div>
                 )}
-
+                <AnimatePresence>
                 {notifications.map((n) => (
                   <motion.div
                     key={n._id}
                     initial={{ opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20, transition: { duration: 0.15 } }}
                     style={{
                       display: 'flex',
                       gap: 10,
@@ -349,9 +414,18 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                       borderBottom: '1px solid rgba(255,255,255,0.04)',
                       cursor: 'default',
                       transition: 'background 0.15s',
+                      position: 'relative',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.025)';
+                      const btn = e.currentTarget.querySelector('.notif-dismiss') as HTMLElement;
+                      if (btn) btn.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      const btn = e.currentTarget.querySelector('.notif-dismiss') as HTMLElement;
+                      if (btn) btn.style.opacity = '0';
+                    }}
                   >
                     {/* Icon */}
                     <div style={{
@@ -416,8 +490,40 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Per-item dismiss button */}
+                    <motion.button
+                      className="notif-dismiss"
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.85 }}
+                      onClick={(e) => handleDismiss(n._id, e)}
+                      title="Dismiss"
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 10,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 5,
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 18,
+                        height: 18,
+                        padding: 0,
+                        opacity: 0,
+                        transition: 'opacity 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.2)'; (e.currentTarget as HTMLElement).style.color = '#ef4444'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
+                    >
+                      <X size={10} />
+                    </motion.button>
                   </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
             </motion.div>
           )}

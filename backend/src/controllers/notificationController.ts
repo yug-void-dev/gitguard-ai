@@ -15,3 +15,36 @@ export const getNotifications = async (_req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+/**
+ * DELETE /api/notifications
+ * Delete all audit-log notifications for the current user session.
+ */
+export const clearAllNotifications = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    await AuditLog.deleteMany({});
+    res.status(200).json({ success: true, message: 'All notifications cleared' });
+  } catch (error) {
+    logger.error({ error }, 'Failed to clear all notifications');
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/notifications/:id
+ * Delete a single notification by its audit-log id.
+ */
+export const dismissNotification = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const deleted = await AuditLog.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, message: 'Notification not found' });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Notification dismissed' });
+  } catch (error) {
+    logger.error({ error }, 'Failed to dismiss notification');
+    next(error);
+  }
+};

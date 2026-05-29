@@ -26,7 +26,12 @@ export const protect = async (
   _res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const token = (req.cookies as Record<string, string | undefined>).token;
+  let token = (req.cookies as Record<string, string | undefined>).token;
+
+  // Fallback to Bearer token in Authorization header if cookie is not present
+  if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
 
   if (!token) {
     next(new AuthError('Not authorized, please login'));
@@ -41,3 +46,4 @@ export const protect = async (
     next(new AuthError('Not authorized, token failed'));
   }
 };
+

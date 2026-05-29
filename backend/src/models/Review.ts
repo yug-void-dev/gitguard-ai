@@ -6,12 +6,15 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
 export interface IFinding {
+  _id?: any;
+  id?: string;
   file: string;
   line: number;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
   message: string;
   suggestion: string;
   confidence: number;
+  category?: string;
 }
 
 export interface IReview extends Document {

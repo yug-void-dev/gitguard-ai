@@ -34,10 +34,17 @@ import { enrichFindings } from '../ai/suggestionEnricher';
 import { scanDiffForVulnerabilities } from '../ai/vulnerabilityScanner';
 import { Review } from '../models/Review';
 import { logger } from '../lib/logger';
-import { ReviewJobPayload, AnalysisResult, AnalysisFinding } from '../types/analysis';
+import { ReviewJobPayload, AnalysisFinding } from '../types/analysis';
 import { processDiff } from '../github/diffProcessor';
 import { routeToLLM } from '../llm/llmRouter';
 import { broadcastReviewEvent } from '../websocket';
+import { loadActiveRule, filterFindings, scanDiffForCustomPatterns } from '../services/ruleEngine';
+import { computeEnhancedMetrics } from '../services/codeQualityService';
+import { postReviewComment } from '../services/commentService';
+import { postInlineSuggestions } from '../services/suggestionService';
+import { User } from '../models/User';
+import { Repository } from '../models/Repository';
+import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
 import axios from 'axios';
 import pino from 'pino';
 
@@ -155,6 +162,21 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
 
   log.info('📥 Processing review job');
 
+  // Try to retrieve repository user access token for authenticated requests (handles private repos)
+  const [owner, repoName] = repositoryFullName.split('/');
+  let accessToken: string | null = null;
+  try {
+    const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+    if (repoDoc) {
+      const user = await User.findById(repoDoc.ownerId).select('+accessToken');
+      if (user?.accessToken) {
+        accessToken = user.accessToken;
+      }
+    }
+  } catch (dbErr) {
+    log.error({ err: dbErr }, 'Failed to query database for repository/user token');
+  }
+
   // ── Stage 1: Fetch or Use raw diff ──────────────────────────────────
   const rawDiff = await measureStage(
     'fetch-diff',
@@ -165,6 +187,12 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
         log.info('Using rawDiff provided in job payload');
         return job.data.rawDiff;
       }
+      if (accessToken) {
+        log.info('Fetching authenticated PR diff via Octokit');
+        const octokit = createOctokitClient(accessToken);
+        return fetchRawDiff(octokit, owner, repoName, prNumber);
+      }
+      log.info('Fetching unauthenticated PR diff via axios');
       return fetchDiff(diffUrl, log);
     },
   );
@@ -228,18 +256,48 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     'Vulnerability scan complete',
   );
 
-  // ── Stage 6: Compute metrics ──────────────────────────────────────────
-  const metrics = computeMetrics(enrichedFindings, vulnerabilities.length);
+  // ── Stage 6: Apply repository rule engine filtering (Teammate B) ───────
+  const activeRuleSpec = await loadActiveRule(repositoryFullName);
+  const filterResult = await measureStage(
+    'rule-filter',
+    jobId,
+    repositoryFullName,
+    async () => {
+      const result = filterFindings(enrichedFindings, activeRuleSpec);
+      const customFindings = scanDiffForCustomPatterns(rawDiff, activeRuleSpec);
+      result.filteredFindings = [...result.filteredFindings, ...customFindings];
+      return result;
+    },
+  );
 
-  // ── Stage 7: Persist to MongoDB ───────────────────────────────────────
-  await measureStage(
+  const filteredFindings = filterResult.filteredFindings;
+  log.info(
+    {
+      originalCount: enrichedFindings.length,
+      filteredCount: filteredFindings.length,
+      suppressedCount: filterResult.suppressedCount,
+      reasons: filterResult.suppressedReasons,
+    },
+    'Rule engine filtering complete',
+  );
+
+  // ── Stage 7: Enhanced metrics (Teammate C) ─────────────────────────────
+  const enhancedMetrics = await measureStage(
+    'enhanced-metrics',
+    jobId,
+    repositoryFullName,
+    async () => computeEnhancedMetrics(filteredFindings, vulnerabilities.length, rawDiff),
+  );
+
+  // ── Stage 8: Persist results to MongoDB ────────────────────────────────
+  const updatedReview = await measureStage(
     'persist-result',
     jobId,
     repositoryFullName,
     async () => {
       const [owner, repoName] = repositoryFullName.split('/');
 
-      const updatedReview = await Review.findOneAndUpdate(
+      const reviewDoc = await Review.findOneAndUpdate(
         {
           'repository.fullName': repositoryFullName,
           prNumber,
@@ -249,21 +307,22 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
             repository: { owner, name: repoName, fullName: repositoryFullName },
             prTitle: context.title,
             status: 'completed',
-            findings: enrichedFindings.map((f) => ({
+            findings: filteredFindings.map((f) => ({
               file: f.file,
               line: f.line,
               severity: f.severity,
               message: f.message,
               suggestion: f.suggestion,
               confidence: f.confidence,
+              category: f.category,
             })),
-            summary: buildSummary(enrichedFindings, vulnerabilities.length, context.title),
+            summary: buildSummary(filteredFindings, vulnerabilities.length, context.title),
             metrics: {
               vulnerabilitiesCount: vulnerabilities.length,
-              performanceIssuesCount: enrichedFindings.filter(
+              performanceIssuesCount: filteredFindings.filter(
                 (f) => f.category === 'performance',
               ).length,
-              codeQualityScore: metrics.codeQualityScore,
+              codeQualityScore: enhancedMetrics.codeQualityScore,
             },
             diffData: rawDiff.slice(0, 50_000), // cap stored diff size
           },
@@ -271,21 +330,67 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
         { upsert: true, new: true },
       );
 
-      if (updatedReview) {
+      if (reviewDoc) {
         broadcastReviewEvent({
           type: 'review:completed',
-          payload: updatedReview.toJSON(),
+          payload: reviewDoc.toJSON(),
           timestamp: new Date().toISOString(),
         });
       }
+
+      return reviewDoc;
     },
   );
 
+  // ── Stage 9: Post comment back to GitHub PR (Teammate C) ────────────────
+  if (updatedReview) {
+    try {
+      const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+      if (repoDoc) {
+        const user = await User.findById(repoDoc.ownerId).select('+accessToken');
+        if (user?.accessToken) {
+          const octokit = createOctokitClient(user.accessToken);
+
+          await measureStage(
+            'post-github-comment',
+            jobId,
+            repositoryFullName,
+            async () => {
+              // 1. Post primary bot review comment
+              const commentDoc = await postReviewComment({
+                octokit,
+                reviewDoc: updatedReview,
+                context,
+                eventTraceId: eventId,
+              });
+
+              // 2. Post inline suggestion blocks for critical/high issues
+              if (commentDoc) {
+                await postInlineSuggestions({
+                  octokit,
+                  commentDoc,
+                  findings: filteredFindings,
+                  prNumber,
+                });
+              }
+            },
+          );
+        } else {
+          log.warn('Skipping Stage 9: No access token stored for repository owner.');
+        }
+      } else {
+        log.warn('Skipping Stage 9: Repository not found in database.');
+      }
+    } catch (commentError) {
+      log.error({ err: commentError }, 'Failed to post GitHub comments/suggestions');
+    }
+  }
+
   log.info(
     {
-      findings: enrichedFindings.length,
+      findings: filteredFindings.length,
       vulnerabilities: vulnerabilities.length,
-      score: metrics.codeQualityScore,
+      score: enhancedMetrics.codeQualityScore,
     },
     '🎉 Review pipeline complete',
   );
@@ -314,39 +419,7 @@ async function fetchDiff(
 }
 
 
-/** Computes aggregate metrics from enriched findings */
-function computeMetrics(
-  findings: AnalysisFinding[],
-  vulnerabilityCount: number,
-): AnalysisResult['metrics'] {
-  const counts = {
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    info: 0,
-    totalFindings: findings.length,
-    vulnerabilitiesFound: vulnerabilityCount,
-    codeQualityScore: 100,
-  };
 
-  for (const f of findings) {
-    counts[f.severity]++;
-  }
-
-  // Deduct from quality score: critical=20, high=10, medium=5, low=2, vuln=15
-  counts.codeQualityScore = Math.max(
-    0,
-    100 -
-      counts.critical * 20 -
-      counts.high * 10 -
-      counts.medium * 5 -
-      counts.low * 2 -
-      vulnerabilityCount * 15,
-  );
-
-  return counts;
-}
 
 /** Builds a one-paragraph summary of the analysis */
 function buildSummary(

@@ -65,13 +65,13 @@ describe('formatFindingsAsMarkdown', () => {
 
   it('should show 🟢 emoji when no critical/high findings', () => {
     const findings = [makeFinding({ severity: 'low' })];
-    const result = formatFindingsAsMarkdown(findings, CTX, METRICS, 'evt-1');
+    const result = formatFindingsAsMarkdown(findings, CTX, { ...METRICS, codeQualityScore: 95 }, 'evt-1');
     expect(result.fullMarkdown).toContain('🟢');
   });
 
   it('should show 🔴 emoji when critical findings present', () => {
     const findings = [makeFinding({ severity: 'critical' })];
-    const result = formatFindingsAsMarkdown(findings, CTX, METRICS, 'evt-1');
+    const result = formatFindingsAsMarkdown(findings, CTX, { ...METRICS, codeQualityScore: 50 }, 'evt-1');
     expect(result.fullMarkdown).toContain('🔴');
   });
 

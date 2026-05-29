@@ -23,6 +23,7 @@ jest.mock('../../src/config/env', () => ({
 
 import { filterFindings, scanDiffForCustomPatterns, isPathAllowed } from '../../src/services/ruleEngine';
 import { IRepositoryRuleSpec } from '../../src/models/RepositoryRule';
+import { IFinding } from '../../src/models/Review';
 
 describe('ruleEngine', () => {
   const baseSpec: IRepositoryRuleSpec = {
@@ -61,7 +62,7 @@ describe('ruleEngine', () => {
         { file: 'index.ts', confidence: 0.5, category: 'bug', severity: 'low' },
       ];
 
-      const result = filterFindings(findings, spec);
+      const result = filterFindings(findings as unknown as IFinding[], spec);
       expect(result.filteredFindings.length).toBe(1);
       expect(result.filteredFindings[0].confidence).toBe(0.9);
       expect(result.suppressedCount).toBe(1);
@@ -75,7 +76,7 @@ describe('ruleEngine', () => {
         { file: 'index.ts', confidence: 0.9, category: 'security', severity: 'high' },
       ];
 
-      const result = filterFindings(findings, spec);
+      const result = filterFindings(findings as unknown as IFinding[], spec);
       expect(result.filteredFindings.length).toBe(1);
       expect(result.filteredFindings[0].category).toBe('security');
       expect(result.suppressedReasons.ignoreLinting).toBe(1);
@@ -88,7 +89,7 @@ describe('ruleEngine', () => {
         { file: 'index.ts', confidence: 0.9, category: 'security', severity: 'high' },
       ];
 
-      const result = filterFindings(findings, spec);
+      const result = filterFindings(findings as unknown as IFinding[], spec);
       expect(result.filteredFindings.length).toBe(1);
       expect(result.filteredFindings[0].category).toBe('security');
       expect(result.suppressedReasons.securityOnly).toBe(1);
@@ -114,7 +115,7 @@ describe('ruleEngine', () => {
         { file: 'index.ts', message: 'Critical logic flaw', confidence: 0.9, category: 'bug', severity: 'high' },
       ];
 
-      const result = filterFindings(findings, spec);
+      const result = filterFindings(findings as unknown as IFinding[], spec);
       expect(result.filteredFindings.length).toBe(1);
       expect(result.filteredFindings[0].message).toBe('Critical logic flaw');
       expect(result.suppressedReasons.customSuppressed).toBe(1);
@@ -139,7 +140,7 @@ describe('ruleEngine', () => {
         { file: 'index.ts', message: 'Do not use console.log', confidence: 0.9, category: 'code-quality', severity: 'low' },
       ];
 
-      const result = filterFindings(findings, spec);
+      const result = filterFindings(findings as unknown as IFinding[], spec);
       expect(result.filteredFindings.length).toBe(1);
       expect(result.filteredFindings[0].severity).toBe('high');
       expect(result.filteredFindings[0].message).toContain('Avoid console logs in production');

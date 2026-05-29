@@ -122,9 +122,10 @@ export const applyCommentSuggestion = async (
     });
 
     res.status(200).json({ success: true, ...result });
-  } catch (error: any) {
+  } catch (error) {
     logger.error({ error, commentId }, 'Failed to apply suggestion');
-    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+    const err = error as { message?: string };
+    res.status(500).json({ success: false, message: err.message || 'Internal server error' });
   }
 };
 

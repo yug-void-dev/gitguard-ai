@@ -168,10 +168,11 @@ export async function postReviewComment(params: {
 
     log.info({ githubReviewId: response.data.id }, 'PR review successfully posted to GitHub');
     return gitHubComment;
-  } catch (error: any) {
+  } catch (error) {
     log.error({ error }, 'Failed to post PR review to GitHub');
 
-    gitHubComment.markAsFailed(error.status?.toString() || 'GITHUB_ERROR', error.message || 'Unknown GitHub Error');
+    const err = error as { status?: number | string; message?: string };
+    gitHubComment.markAsFailed(err.status?.toString() || 'GITHUB_ERROR', err.message || 'Unknown GitHub Error');
     await gitHubComment.save();
 
     throw error;

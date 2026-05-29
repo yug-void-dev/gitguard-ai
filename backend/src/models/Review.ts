@@ -6,7 +6,7 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
 export interface IFinding {
-  _id?: any;
+  _id?: mongoose.Types.ObjectId;
   id?: string;
   file: string;
   line: number;

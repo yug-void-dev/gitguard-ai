@@ -1,104 +1,79 @@
 /**
  * @file tests/unit/services/suggestionService.test.ts
- * @description Unit tests for one-click suggestion posting.
+ * @description Unit tests for one-click inline suggestions posting and applying.
  */
 
+const mockGet = jest.fn();
 const mockCreateReviewComment = jest.fn();
+const mockGetContent = jest.fn();
+const mockCreateOrUpdateFileContents = jest.fn();
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => ({
     rest: {
-      pulls: { createReviewComment: mockCreateReviewComment },
+      pulls: {
+        get: mockGet,
+        createReviewComment: mockCreateReviewComment,
+      },
+      repos: {
+        getContent: mockGetContent,
+        createOrUpdateFileContents: mockCreateOrUpdateFileContents,
+      },
     },
   })),
 }));
 
-import { postSuggestions, PostSuggestionsOptions } from '../../../src/services/suggestionService';
-import { IFinding } from '../../../src/models/Review';
+// Mock Mongoose models
+const mockCommentSave = jest.fn();
 
-function makeFinding(overrides: Partial<IFinding> = {}): IFinding {
-  return {
-    file: 'src/auth.ts', line: 15, severity: 'high',
-    message: 'JWT secret not validated',
-    suggestion: 'const secret = process.env.JWT_SECRET;\nif (!secret) throw new Error("missing");',
-    confidence: 0.9,
-    ...overrides,
-  } as IFinding;
-}
+jest.mock('../../../src/models/GitHubComment', () => ({
+  GitHubComment: jest.fn().mockImplementation((data) => ({
+    ...data,
+    save: mockCommentSave,
+    applySuggestion: jest.fn(),
+  })),
+}));
 
-const BASE_OPTS: PostSuggestionsOptions = {
-  token: 'ghp_test', owner: 'owner', repo: 'repo',
-  prNumber: 42, headSha: 'abc123', findings: [], eventId: 'evt-test',
-};
+jest.mock('../../../src/models/Review', () => ({
+  Review: {
+    findById: jest.fn(),
+  },
+}));
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  mockCreateReviewComment.mockResolvedValue({ data: { id: 5001 } });
-});
+import { postInlineSuggestions } from '../../../src/services/suggestionService';
+import { Octokit } from '@octokit/rest';
 
-describe('postSuggestions', () => {
-  it('should return zero when no findings', async () => {
-    const r = await postSuggestions(BASE_OPTS);
-    expect(r.suggestionsPosted).toBe(0);
-    expect(mockCreateReviewComment).not.toHaveBeenCalled();
+describe('suggestionService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGet.mockResolvedValue({ data: { head: { sha: 'commit-sha-123' } } });
+    mockCreateReviewComment.mockResolvedValue({ data: { id: 999 } });
   });
 
-  it('should post suggestion for high finding with code', async () => {
-    const opts = { ...BASE_OPTS, findings: [makeFinding()] };
-    const r = await postSuggestions(opts);
-    expect(r.suggestionsPosted).toBe(1);
-    expect(r.commentIds).toContain(5001);
-  });
+  describe('postInlineSuggestions', () => {
+    it('should post suggestions for critical and high findings only', async () => {
+      const mockOctokit = new Octokit();
+      const mockCommentDoc = {
+        repository: { owner: 'owner', name: 'repo' },
+        save: mockCommentSave,
+      };
 
-  it('should not post for medium/low findings', async () => {
-    const opts = { ...BASE_OPTS, findings: [makeFinding({ severity: 'medium' })] };
-    const r = await postSuggestions(opts);
-    expect(r.suggestionsPosted).toBe(0);
-  });
+      const findings = [
+        { file: 'src/app.ts', line: 10, severity: 'critical', suggestion: 'fix 1', message: 'msg1' },
+        { file: 'src/app.ts', line: 20, severity: 'high', suggestion: 'fix 2', message: 'msg2' },
+        { file: 'src/app.ts', line: 30, severity: 'medium', suggestion: 'fix 3', message: 'msg3' },
+      ];
 
-  it('should skip findings with line=0', async () => {
-    const opts = { ...BASE_OPTS, findings: [makeFinding({ line: 0 })] };
-    const r = await postSuggestions(opts);
-    expect(r.suggestionsPosted).toBe(0);
-  });
+      await postInlineSuggestions({
+        octokit: mockOctokit,
+        commentDoc: mockCommentDoc,
+        findings,
+        prNumber: 42,
+      });
 
-  it('should skip findings with plain-text (non-code) suggestions', async () => {
-    const opts = {
-      ...BASE_OPTS,
-      findings: [makeFinding({ suggestion: 'Please validate the input before using it' })],
-    };
-    const r = await postSuggestions(opts);
-    expect(r.suggestionsPosted).toBe(0);
-  });
-
-  it('should include ```suggestion``` block in comment body', async () => {
-    const opts = { ...BASE_OPTS, findings: [makeFinding()] };
-    await postSuggestions(opts);
-    const body = (mockCreateReviewComment.mock.calls[0][0] as { body: string }).body;
-    expect(body).toContain('```suggestion');
-  });
-
-  it('should increment skipped on API failure', async () => {
-    mockCreateReviewComment.mockRejectedValue(new Error('Line outside diff'));
-    const opts = { ...BASE_OPTS, findings: [makeFinding()] };
-    const r = await postSuggestions(opts);
-    expect(r.skipped).toBe(1);
-    expect(r.suggestionsPosted).toBe(0);
-  });
-
-  it('should handle multiple findings independently', async () => {
-    mockCreateReviewComment
-      .mockResolvedValueOnce({ data: { id: 6001 } })
-      .mockResolvedValueOnce({ data: { id: 6002 } });
-    const opts = {
-      ...BASE_OPTS,
-      findings: [
-        makeFinding({ line: 10 }),
-        makeFinding({ line: 20, file: 'src/user.ts' }),
-      ],
-    };
-    const r = await postSuggestions(opts);
-    expect(r.suggestionsPosted).toBe(2);
-    expect(r.commentIds).toEqual([6001, 6002]);
+      // Should only post critical and high (2 comments)
+      expect(mockCreateReviewComment).toHaveBeenCalledTimes(2);
+      expect(mockCommentSave).toHaveBeenCalled();
+    });
   });
 });

@@ -4,6 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { Repository } from '../models/Repository';
 import { RepositoryRule } from '../models/RepositoryRule';
 import { clearRuleCache } from '../services/ruleEngine';
@@ -84,8 +85,9 @@ export const createRuleProfile = async (
       logger.info({ profileId: profile._id, profileName, repositoryId }, 'Rule profile created');
 
       res.status(201).json({ success: true, profile });
-    } catch (error: any) {
-      if (error.code === 11000) {
+    } catch (error) {
+      const err = error as { code?: number };
+      if (err.code === 11000) {
         res.status(409).json({
           success: false,
           message: `A rule profile with the name '${profileName}' already exists for this repository`,
@@ -127,7 +129,7 @@ export const updateRuleProfile = async (
     }
 
     if (spec) {
-      profile.spec = { ...(profile.spec as any).toObject(), ...spec };
+      profile.spec = { ...(profile.spec as unknown as mongoose.Document).toObject(), ...spec };
       profile.version = (profile.version || 1) + 1;
     }
 

@@ -5,6 +5,8 @@
 
 import { Repository } from '../models/Repository';
 import { RepositoryRule, IRepositoryRuleSpec, ICustomPattern } from '../models/RepositoryRule';
+import { IFinding } from '../models/Review';
+import { logger } from '../lib/logger';
 
 interface CacheEntry {
   ruleSpec: IRepositoryRuleSpec;
@@ -109,13 +111,13 @@ export async function loadActiveRule(repositoryFullName: string): Promise<IRepos
     cache.set(repositoryFullName, { ruleSpec: spec, expiresAt: Date.now() + CACHE_TTL_MS });
     return spec;
   } catch (error) {
-    console.error(`Failed to load active rule for ${repositoryFullName}:`, error);
+    logger.error({ error, repositoryFullName }, 'Failed to load active rule — using default');
     return defaultRule;
   }
 }
 
 export interface RuleFilterResult {
-  filteredFindings: any[];
+  filteredFindings: IFinding[];
   suppressedCount: number;
   suppressedReasons: {
     ignoredPath: number;
@@ -129,7 +131,7 @@ export interface RuleFilterResult {
 /**
  * Helper to match a finding against a custom pattern specification.
  */
-function matchesCustomPattern(finding: any, p: ICustomPattern): boolean {
+function matchesCustomPattern(finding: IFinding, p: ICustomPattern): boolean {
   const textToMatch = `${finding.file || ''} ${finding.message || ''} ${finding.suggestion || ''}`;
   if (p.type === 'regex') {
     try {
@@ -146,8 +148,8 @@ function matchesCustomPattern(finding: any, p: ICustomPattern): boolean {
 /**
  * Filter a list of findings against a rule specification.
  */
-export function filterFindings(findings: any[], spec: IRepositoryRuleSpec): RuleFilterResult {
-  const filteredFindings: any[] = [];
+export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec): RuleFilterResult {
+  const filteredFindings: IFinding[] = [];
   let ignoredPath = 0;
   let lowConfidence = 0;
   let securityOnly = 0;

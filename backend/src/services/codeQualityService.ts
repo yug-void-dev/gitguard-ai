@@ -3,6 +3,8 @@
  * @description Service for computing enhanced code quality metrics (density, ratios, grades).
  */
 
+import { IFinding } from '../models/Review';
+
 export interface EnhancedMetrics {
   codeQualityScore: number;
   vulnerabilitiesCount: number;
@@ -21,7 +23,7 @@ export interface EnhancedMetrics {
  * @param rawDiff Raw pull request diff
  */
 export function computeEnhancedMetrics(
-  findings: any[],
+  findings: IFinding[],
   vulnerabilitiesCount: number,
   rawDiff: string,
 ): EnhancedMetrics {

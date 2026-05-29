@@ -62,7 +62,7 @@ const repositorySchema = new Schema<IRepository>(
       default: 'full',
     },
     ignorePatterns: { type: [String], default: [] },
-    rules: { type: repositoryRuleSchema, default: () => ({}) },
+    rules: { type: repositoryRuleSchema, default: (): Record<string, unknown> => ({}) },
     isActive:       { type: Boolean, default: true },
   },
   { timestamps: true, collection: 'repositories' },

@@ -73,7 +73,7 @@ const repositoryRuleSchema = new Schema<IRepositoryRuleDoc>(
 	{
 		repositoryId: { type: Schema.Types.ObjectId, ref: 'Repository', required: true, index: true },
 		profileName: { type: String, required: true, default: 'default' },
-		spec: { type: repositoryRuleSpecSchema, default: () => ({}) },
+		spec: { type: repositoryRuleSpecSchema, default: (): Record<string, unknown> => ({}) },
 		version: { type: Number, default: 1 },
 		isActive: { type: Boolean, default: true, index: true },
 	},

@@ -46,7 +46,7 @@ export function initWebSocketServer(server: HttpServer): void {
 
 export function broadcastReviewEvent(event: {
   type: 'review:completed' | 'review:failed' | 'review:queued';
-  payload: any;
+  payload: Record<string, unknown>;
   timestamp: string;
 }): void {
   if (!wss) {

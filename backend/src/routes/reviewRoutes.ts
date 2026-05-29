@@ -1,6 +1,6 @@
 /**
  * @file src/routes/reviewRoutes.ts
- * @description Review API endpoints for the frontend.
+ * @description Review API endpoints for the frontend dashboard.
  */
 
 import { Router } from 'express';
@@ -9,13 +9,13 @@ import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-// Route to get all reviews
+// Get all reviews (with optional pagination/filters)
 router.get('/', protect, reviewController.getReviews);
 
-// Route to get review statistics
+// Get review statistics
 router.get('/stats', protect, reviewController.getReviewStats);
 
-// Route to get a single review by id
+// Get a single review by ID
 router.get('/:reviewId', protect, reviewController.getReviewById);
 
 export default router;

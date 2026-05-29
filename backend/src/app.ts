@@ -110,7 +110,7 @@ export function createApp(): Application {
   // Rule management routes (authenticated)
   app.use('/api/rules', express.json(), ruleRoutes);
 
-  // Comments and inline suggestions (public/private routes inside router)
+  // Comment, label and suggestion posting routes
   app.use('/api/comments', express.json(), commentRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────

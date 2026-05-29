@@ -47,6 +47,7 @@ import { Repository } from '../models/Repository';
 import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
 import axios from 'axios';
 import pino from 'pino';
+import { applyPRLabels } from '../services/labelService';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -342,44 +343,58 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     },
   );
 
-  // ── Stage 9: Post comment back to GitHub PR (Teammate C) ────────────────
+  // ── Stage 9: Post comment and suggestions back to GitHub PR (Teammate C) ────────────────
   if (updatedReview) {
     try {
-      const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
-      if (repoDoc) {
-        const user = await User.findById(repoDoc.ownerId).select('+accessToken');
-        if (user?.accessToken) {
-          const octokit = createOctokitClient(user.accessToken);
+      let token = job.data.githubToken;
 
-          await measureStage(
-            'post-github-comment',
-            jobId,
-            repositoryFullName,
-            async () => {
-              // 1. Post primary bot review comment
-              const commentDoc = await postReviewComment({
-                octokit,
-                reviewDoc: updatedReview,
-                context,
-                eventTraceId: eventId,
-              });
-
-              // 2. Post inline suggestion blocks for critical/high issues
-              if (commentDoc) {
-                await postInlineSuggestions({
-                  octokit,
-                  commentDoc,
-                  findings: filteredFindings,
-                  prNumber,
-                });
-              }
-            },
-          );
-        } else {
-          log.warn('Skipping Stage 9: No access token stored for repository owner.');
+      if (!token) {
+        const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+        if (repoDoc) {
+          const user = await User.findById(repoDoc.ownerId).select('+accessToken');
+          if (user?.accessToken) {
+            token = user.accessToken;
+          }
         }
+      }
+
+      if (token) {
+        const octokit = createOctokitClient(token);
+
+        await measureStage(
+          'post-github-comment',
+          jobId,
+          repositoryFullName,
+          async () => {
+            // 1. Post primary bot review comment
+            const commentDoc = await postReviewComment({
+              octokit,
+              reviewDoc: updatedReview,
+              context,
+              eventTraceId: eventId,
+            });
+
+            // 2. Post inline suggestion blocks for critical/high issues
+            if (commentDoc) {
+              await postInlineSuggestions({
+                octokit,
+                commentDoc,
+                findings: filteredFindings,
+                prNumber,
+              });
+            }
+
+            // 3. Apply PR labels based on findings
+            try {
+              const [owner, repoName] = repositoryFullName.split('/');
+              await applyPRLabels(token!, owner, repoName, prNumber, filteredFindings, eventId);
+            } catch (labelErr) {
+              log.warn({ err: labelErr }, 'Failed to apply PR labels (non-blocking)');
+            }
+          },
+        );
       } else {
-        log.warn('Skipping Stage 9: Repository not found in database.');
+        log.warn('Skipping Stage 9: No access token stored for repository owner or passed in payload.');
       }
     } catch (commentError) {
       log.error({ err: commentError }, 'Failed to post GitHub comments/suggestions');

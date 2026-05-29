@@ -13,6 +13,14 @@
 import mongoose, { Document, Schema, Model, Types } from 'mongoose';
 
 // --- Public rule shape reused across codebase ---
+export interface ICustomPattern {
+	pattern: string;
+	type: 'regex' | 'substring' | 'literal';
+	category: 'security' | 'bug' | 'performance' | 'code-quality' | 'dependency' | 'refactoring' | 'test-coverage';
+	message: string;
+	severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+	action: 'flag' | 'suppress';
+}
 export interface IRepositoryRuleSpec {
 	strictMode: boolean;          // treat any issue as actionable
 	ignoreLinting: boolean;       // skip stylistic lint issues
@@ -21,8 +29,8 @@ export interface IRepositoryRuleSpec {
 	allowAutoApply: boolean;      // whether one-click suggestions may be auto-applied
 	ignoredPaths: string[];       // glob patterns to ignore
 	onlySecurity: boolean;        // only surface security-related findings
+	customPatterns?: ICustomPattern[]; // custom matching patterns
 }
-
 export interface IRepositoryRuleDoc extends Document {
 	repositoryId: Types.ObjectId; // reference to Repository
 	profileName: string;          // e.g. 'default', 'strict', 'security-only'
@@ -35,6 +43,17 @@ export interface IRepositoryRuleDoc extends Document {
 	// Instance helper
 	matchesPath(path: string): boolean;
 }
+const customPatternSchema = new Schema<ICustomPattern>(
+	{
+		pattern: { type: String, required: true },
+		type: { type: String, enum: ['regex', 'substring', 'literal'], default: 'substring' },
+		category: { type: String, required: true },
+		message: { type: String, required: true },
+		severity: { type: String, enum: ['critical', 'high', 'medium', 'low', 'info'], default: 'medium' },
+		action: { type: String, enum: ['flag', 'suppress'], default: 'flag' },
+	},
+	{ _id: false },
+);
 
 const repositoryRuleSpecSchema = new Schema<IRepositoryRuleSpec>(
 	{
@@ -45,6 +64,7 @@ const repositoryRuleSpecSchema = new Schema<IRepositoryRuleSpec>(
 		allowAutoApply: { type: Boolean, default: false },
 		ignoredPaths: { type: [String], default: [] },
 		onlySecurity: { type: Boolean, default: false },
+		customPatterns: { type: [customPatternSchema], default: [] },
 	},
 	{ _id: false },
 );

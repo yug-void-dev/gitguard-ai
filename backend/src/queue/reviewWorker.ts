@@ -32,7 +32,7 @@ import { REVIEW_QUEUE_NAME } from './reviewQueue';
 import { measureStage } from './queueMetrics';
 import { enrichFindings } from '../ai/suggestionEnricher';
 import { scanDiffForVulnerabilities } from '../ai/vulnerabilityScanner';
-import { Review } from '../models/Review';
+import { Review, IFinding } from '../models/Review';
 import { logger } from '../lib/logger';
 import { ReviewJobPayload, AnalysisFinding } from '../types/analysis';
 import { processDiff } from '../github/diffProcessor';
@@ -438,7 +438,7 @@ async function fetchDiff(
 
 /** Builds a one-paragraph summary of the analysis */
 function buildSummary(
-  findings: AnalysisFinding[],
+  findings: (IFinding | AnalysisFinding)[],
   vulnCount: number,
   prTitle: string,
 ): string {

@@ -2,7 +2,15 @@ const mysql = require('mysql');
 
 // ISSUE 1: Hardcoded credentials
 const connection = mysql.createConnection({
-  host: 'localhost',
+Use environment variables or a secure secrets manager
+
+```
+const connection = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+});
+```
   user: 'root',
   password: 'super_secret_password_123', 
 });

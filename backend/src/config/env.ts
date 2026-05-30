@@ -44,6 +44,13 @@ const envSchema = z.object({
   LLM_PRIMARY: z.enum(['gemini', 'groq', 'anthropic']).default('gemini'),
   LLM_MAX_TOKENS: z.string().default('8192').transform((v) => parseInt(v, 10)),
   DIFF_MAX_CHUNK_BYTES: z.string().default('102400').transform((v) => parseInt(v, 10)),
+
+  // SMTP Configuration (for Forgot Password OTP email)
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional().transform((v) => (v ? parseInt(v, 10) : undefined)),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('GitGuard AI <noreply@gitguard-ai.local>'),
 });
 
 export type Env = z.infer<typeof envSchema>;

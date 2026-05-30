@@ -15,6 +15,8 @@ export interface IUser extends Document {
   profileUrl?: string;
   accessToken?: string;
   lastLogin: Date;
+  resetPasswordOtp?: string;
+  resetPasswordOtpExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -30,6 +32,8 @@ const userSchema = new Schema<IUser>(
     profileUrl:  { type: String, default: '' },
     accessToken: { type: String, select: false },
     lastLogin:   { type: Date, default: Date.now },
+    resetPasswordOtp:        { type: String },
+    resetPasswordOtpExpires: { type: Date },
   },
   { timestamps: true, collection: 'users' },
 );

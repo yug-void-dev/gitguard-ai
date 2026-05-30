@@ -20,9 +20,27 @@ export const getMe = async (): Promise<{ success: boolean; user: User }> => {
   return data;
 };
 
+export const forgotPassword = async (email: string): Promise<{ success: boolean; message: string; previewUrl?: string }> => {
+  const { data } = await api.post<{ success: boolean; message: string; previewUrl?: string }>('/auth/forgot-password', { email });
+  return data;
+};
+
+export const verifyOtp = async (email: string, otp: string): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post<{ success: boolean; message: string }>('/auth/verify-otp', { email, otp });
+  return data;
+};
+
+export const resetPassword = async (email: string, otp: string, password: string): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post<{ success: boolean; message: string }>('/auth/reset-password', { email, otp, password });
+  return data;
+};
+
 export const authService = {
   login,
   register,
   logout,
   getMe,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
 };

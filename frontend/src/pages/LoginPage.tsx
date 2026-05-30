@@ -5,7 +5,8 @@ import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import * as THREE from 'three';
 import { useAuth } from '../hooks/useAuth';
-import { Shield, Mail, Lock, User, Zap, Eye, EyeOff } from 'lucide-react';
+import { Shield, Mail, Lock, User, Zap, Eye, EyeOff, ArrowLeft, KeyRound, ShieldCheck, MailOpen } from 'lucide-react';
+import { authService } from '../services/auth.service';
 
 
 
@@ -479,6 +480,7 @@ const LoginPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -488,6 +490,112 @@ const LoginPage: React.FC = () => {
     confirmPassword: '',
     rememberMe: !!localStorage.getItem('gg_remembered_login'),
   });
+
+  // Forgot password states
+  const [forgotStep, setForgotStep] = useState<'none' | 'email' | 'otp' | 'reset'>('none');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const handleRequestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await authService.forgotPassword(forgotEmail);
+      if (data.success) {
+        setSuccess(data.message);
+        if (data.previewUrl) {
+          console.log('Dev Ethereal Email Preview:', data.previewUrl);
+          // Show the link directly in dev environment for easy verification
+          setSuccess(`OTP sent! Developer Preview URL: ${data.previewUrl}`);
+        }
+        setForgotStep('otp');
+        setCooldown(60);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await authService.verifyOtp(forgotEmail, forgotOtp);
+      if (data.success) {
+        setSuccess('OTP verified successfully. Please enter your new password.');
+        setForgotStep('reset');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await authService.resetPassword(forgotEmail, forgotOtp, newPassword);
+      if (data.success) {
+        setSuccess('Password reset successfully! You can now log in.');
+        setForgotStep('none');
+        setTab('login');
+        setForgotEmail('');
+        setForgotOtp('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to reset password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (cooldown > 0) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await authService.forgotPassword(forgotEmail);
+      if (data.success) {
+        setSuccess('A new OTP has been sent to your email.');
+        if (data.previewUrl) {
+          console.log('Dev Ethereal Email Preview:', data.previewUrl);
+          setSuccess(`New OTP sent! Developer Preview URL: ${data.previewUrl}`);
+        }
+        setCooldown(60);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to resend OTP');
+    }
+  };
 
   useEffect(() => {
     if (user && !authLoading) navigate('/dashboard');
@@ -631,251 +739,539 @@ const LoginPage: React.FC = () => {
               <Shield size={44} strokeWidth={2.5} className="form-icon mx-auto" />
             </div>
 
-            <div className="view-switcher w-full max-w-[380px]" style={{ marginBottom: '1.5rem' }}>
-              <button
-                type="button"
-                className={`switch-btn ${tab === 'login' ? 'active' : ''}`}
-                onClick={() => setTab('login')}
-              >
-                <span>LOGIN</span>
-              </button>
-              <button
-                type="button"
-                className={`switch-btn ${tab === 'register' ? 'active' : ''}`}
-                onClick={() => setTab('register')}
-              >
-                <span>REGISTER</span>
-              </button>
-              <div className={`slider ${tab === 'register' ? 'slide-right' : ''}`}></div>
-            </div>
+            {forgotStep === 'none' && (
+              <div className="view-switcher w-full max-w-[380px]" style={{ marginBottom: '1.5rem' }}>
+                <button
+                  type="button"
+                  className={`switch-btn ${tab === 'login' ? 'active' : ''}`}
+                  onClick={() => setTab('login')}
+                >
+                  <span>LOGIN</span>
+                </button>
+                <button
+                  type="button"
+                  className={`switch-btn ${tab === 'register' ? 'active' : ''}`}
+                  onClick={() => setTab('register')}
+                >
+                  <span>REGISTER</span>
+                </button>
+                <div className={`slider ${tab === 'register' ? 'slide-right' : ''}`}></div>
+              </div>
+            )}
 
             <div className="w-full min-h-[400px]">
-              {tab === 'login' && (
-                <div className="flex flex-col gap-5 w-full animate-[titleFadeIn_0.6s_ease-out]">
-                  <div className="text-center mb-2">
-                    <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
-                      WELCOME BACK
-                    </h2>
-                    <p className="text-slate-400 text-sm tracking-wide">
-                      Enter your credentials to access the sentinel
-                    </p>
-                  </div>
+              {forgotStep === 'none' ? (
+                <>
+                  {tab === 'login' && (
+                    <div className="flex flex-col gap-5 w-full animate-[titleFadeIn_0.6s_ease-out]">
+                      <div className="text-center mb-2">
+                        <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                          WELCOME BACK
+                        </h2>
+                        <p className="text-slate-400 text-sm tracking-wide">
+                          Enter your credentials to access the sentinel
+                        </p>
+                      </div>
 
-                  {error && (
-                    <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                      {error}
+                      {error && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
+                          {error}
+                        </div>
+                      )}
+
+                      {success && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
+                          {success}
+                        </div>
+                      )}
+
+                      <div className="w-full flex">
+                        <button type="button" onClick={handleGitHub} className="flex-1 flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer text-slate-200 font-['Inter'] font-semibold text-[1.05rem] transition-all duration-200 hover:bg-white/10 hover:border-white/20 hover:text-white" style={{ padding: '1.2rem 2rem', minHeight: '56px', width: '100%' }}>
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                          </svg>
+                          Continue with GitHub
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 my-2 w-full">
+                        <div className="flex-1 h-px bg-indigo-500/20" />
+                        <span className="font-['Fira_Code'] text-[0.65rem] tracking-wider text-slate-400/50 uppercase">or with email</span>
+                        <div className="flex-1 h-px bg-indigo-500/20" />
+                      </div>
+
+                      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <User size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="USERNAME OR EMAIL"
+                            className="gym-input"
+                            name="login"
+                            value={formData.login}
+                            onChange={handleChange}
+                            required
+                          />
+                          <div className="input-line"></div>
+                        </div>
+
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <Lock size={18} />
+                          </div>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="PASSWORD"
+                            className="gym-input gym-input--password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowPassword((v) => !v)}
+                          >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                          <div className="input-line"></div>
+                        </div>
+
+                        <div className="flex justify-between items-center mt-2">
+                          <label className="remember-checkbox">
+                            <input 
+                              type="checkbox" 
+                              name="rememberMe"
+                              checked={formData.rememberMe}
+                              onChange={handleChange} 
+                            />
+                            <span className="checkmark"></span>
+                            <span className="label-text">Remember Me</span>
+                          </label>
+                          <button
+                            type="button"
+                            className="forgot-link"
+                            onClick={() => {
+                              setForgotStep('email');
+                              setError(null);
+                              setSuccess(null);
+                            }}
+                          >
+                            Forgot Password?
+                          </button>
+                        </div>
+
+                        <button className="submit-btn" type="submit" disabled={loading}>
+                          {loading ? (
+                            <div className="gg-spin" />
+                          ) : (
+                            <>
+                              <span className="btn-text">ENTER THE SENTINEL</span>
+                              <Zap size={18} className="btn-icon" />
+                            </>
+                          )}
+                        </button>
+                      </form>
                     </div>
                   )}
 
-                  <div className="w-full flex">
-                    <button type="button" onClick={handleGitHub} className="flex-1 flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer text-slate-200 font-['Inter'] font-semibold text-[1.05rem] transition-all duration-200 hover:bg-white/10 hover:border-white/20 hover:text-white" style={{ padding: '1.2rem 2rem', minHeight: '56px', width: '100%' }}>
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                      </svg>
-                      Continue with GitHub
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 my-2 w-full">
-                    <div className="flex-1 h-px bg-indigo-500/20" />
-                    <span className="font-['Fira_Code'] text-[0.65rem] tracking-wider text-slate-400/50 uppercase">or with email</span>
-                    <div className="flex-1 h-px bg-indigo-500/20" />
-                  </div>
-
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
-                    <div className="input-wrapper">
-                      <div className="input-icon">
-                        <User size={18} />
+                  {tab === 'register' && (
+                    <div className="flex flex-col gap-5 w-full animate-[titleFadeIn_0.6s_ease-out]">
+                      <div className="text-center mb-2">
+                        <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                          JOIN THE LEGION
+                        </h2>
+                        <p className="text-slate-400 text-sm tracking-wide">
+                          Start your code protection journey today
+                        </p>
                       </div>
-                      <input
-                        type="text"
-                        placeholder="USERNAME OR EMAIL"
-                        className="gym-input"
-                        name="login"
-                        value={formData.login}
-                        onChange={handleChange}
-                        required
-                      />
-                      <div className="input-line"></div>
-                    </div>
 
-                    <div className="input-wrapper">
-                      <div className="input-icon">
-                        <Lock size={18} />
-                      </div>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="PASSWORD"
-                        className="gym-input gym-input--password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="password-toggle-btn"
-                        onClick={() => setShowPassword((v) => !v)}
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                      <div className="input-line"></div>
-                    </div>
-
-                    <div className="flex justify-between items-center mt-2">
-                      <label className="remember-checkbox">
-                        <input 
-                          type="checkbox" 
-                          name="rememberMe"
-                          checked={formData.rememberMe}
-                          onChange={handleChange} 
-                        />
-                        <span className="checkmark"></span>
-                        <span className="label-text">Remember Me</span>
-                      </label>
-                      <button
-                        type="button"
-                        className="forgot-link"
-                        onClick={() => setError('Password reset feature coming soon!')}
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-
-                    <button className="submit-btn" type="submit" disabled={loading}>
-                      {loading ? (
-                        <div className="gg-spin" />
-                      ) : (
-                        <>
-                          <span className="btn-text">ENTER THE SENTINEL</span>
-                          <Zap size={18} className="btn-icon" />
-                        </>
+                      {error && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
+                          {error}
+                        </div>
                       )}
-                    </button>
-                  </form>
-                </div>
-              )}
 
-              {tab === 'register' && (
+                      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+                        
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <User size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="GITHUB USERNAME"
+                            className="gym-input"
+                            name="login"
+                            value={formData.login}
+                            onChange={handleChange}
+                            required
+                          />
+                          <div className="input-line"></div>
+                        </div>
+
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <Mail size={18} />
+                          </div>
+                          <input
+                            type="email"
+                            placeholder="EMAIL ADDRESS"
+                            className="gym-input"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            required
+                          />
+                          <div className="input-line"></div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 w-full">
+                          <div className="input-wrapper flex-1">
+                            <div className="input-icon">
+                              <Lock size={18} />
+                            </div>
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="PASSWORD"
+                              className="gym-input gym-input--password"
+                              name="password"
+                              value={formData.password}
+                              onChange={handleChange}
+                              required
+                            />
+                            <button
+                              type="button"
+                              className="password-toggle-btn"
+                              onClick={() => setShowPassword((v) => !v)}
+                            >
+                              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                            <div className="input-line"></div>
+                          </div>
+
+                          <div className="input-wrapper flex-1">
+                            <div className="input-icon">
+                              <Lock size={18} />
+                            </div>
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              placeholder="CONFIRM"
+                              className="gym-input gym-input--password"
+                              name="confirmPassword"
+                              value={formData.confirmPassword}
+                              onChange={handleChange}
+                              required
+                            />
+                            <button
+                              type="button"
+                              className="password-toggle-btn"
+                              onClick={() => setShowConfirmPassword((v) => !v)}
+                            >
+                              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                            <div className="input-line"></div>
+                          </div>
+                        </div>
+
+                        <div className="flex mt-2">
+                          <label className="remember-checkbox">
+                            <input type="checkbox" required />
+                            <span className="checkmark"></span>
+                            <span className="label-text">
+                              I agree to Terms & Conditions
+                            </span>
+                          </label>
+                        </div>
+
+                        <button className="submit-btn" type="submit" disabled={loading}>
+                           {loading ? (
+                            <div className="gg-spin" />
+                          ) : (
+                            <>
+                              <span className="btn-text">JOIN GITGUARD</span>
+                              <Shield size={18} className="btn-icon" />
+                            </>
+                          )}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="flex flex-col gap-5 w-full animate-[titleFadeIn_0.6s_ease-out]">
-                  <div className="text-center mb-2">
-                    <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
-                      JOIN THE LEGION
-                    </h2>
-                    <p className="text-slate-400 text-sm tracking-wide">
-                      Start your code protection journey today
-                    </p>
-                  </div>
+                  {forgotStep === 'email' && (
+                    <div className="flex flex-col gap-5 w-full">
+                      <div className="text-center mb-2">
+                        <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                          FORGOT PASSWORD
+                        </h2>
+                        <p className="text-slate-400 text-sm tracking-wide">
+                          Enter your email to receive an OTP verification code
+                        </p>
+                      </div>
 
-                  {error && (
-                    <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                      {error}
+                      {error && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
+                          {error}
+                        </div>
+                      )}
+
+                      {success && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
+                          {success.includes('Developer Preview URL:') ? (
+                            <>
+                              <div>{success.split('Developer Preview URL:')[0]}</div>
+                              <a
+                                href={success.split('Developer Preview URL:')[1].trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-cyan-400 underline mt-1 inline-block hover:text-cyan-300"
+                              >
+                                Open Ethereal Mailbox
+                              </a>
+                            </>
+                          ) : (
+                            success
+                          )}
+                        </div>
+                      )}
+
+                      <form onSubmit={handleRequestOtp} className="flex flex-col gap-5 w-full">
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <Mail size={18} />
+                          </div>
+                          <input
+                            type="email"
+                            placeholder="EMAIL ADDRESS"
+                            className="gym-input"
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            required
+                          />
+                          <div className="input-line"></div>
+                        </div>
+
+                        <button className="submit-btn" type="submit" disabled={loading}>
+                          {loading ? (
+                            <div className="gg-spin" />
+                          ) : (
+                            <>
+                              <span className="btn-text">SEND OTP CODE</span>
+                              <Zap size={18} className="btn-icon" />
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 mt-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold mx-auto bg-transparent border-none cursor-pointer"
+                          onClick={() => {
+                            setForgotStep('none');
+                            setError(null);
+                            setSuccess(null);
+                          }}
+                        >
+                          <ArrowLeft size={16} /> Back to Login
+                        </button>
+                      </form>
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
-                    
-                    <div className="input-wrapper">
-                      <div className="input-icon">
-                        <User size={18} />
+                  {forgotStep === 'otp' && (
+                    <div className="flex flex-col gap-5 w-full">
+                      <div className="text-center mb-2">
+                        <MailOpen size={36} strokeWidth={2} className="mx-auto text-indigo-400 mb-2 filter drop-shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-bounce" />
+                        <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                          ENTER OTP
+                        </h2>
+                        <p className="text-slate-400 text-sm tracking-wide max-w-[340px] mx-auto leading-relaxed">
+                          We sent a 6-digit verification code to <span className="text-cyan-400 font-medium">{forgotEmail}</span>
+                        </p>
                       </div>
-                      <input
-                        type="text"
-                        placeholder="GITHUB USERNAME"
-                        className="gym-input"
-                        name="login"
-                        value={formData.login}
-                        onChange={handleChange}
-                        required
-                      />
-                      <div className="input-line"></div>
-                    </div>
 
-                    <div className="input-wrapper">
-                      <div className="input-icon">
-                        <Mail size={18} />
-                      </div>
-                      <input
-                        type="email"
-                        placeholder="EMAIL ADDRESS"
-                        className="gym-input"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                      />
-                      <div className="input-line"></div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-4 w-full">
-                      <div className="input-wrapper flex-1">
-                        <div className="input-icon">
-                          <Lock size={18} />
+                      {error && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
+                          {error}
                         </div>
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="PASSWORD"
-                          className="gym-input gym-input--password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="password-toggle-btn"
-                          onClick={() => setShowPassword((v) => !v)}
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                        <div className="input-line"></div>
-                      </div>
-
-                      <div className="input-wrapper flex-1">
-                        <div className="input-icon">
-                          <Lock size={18} />
-                        </div>
-                        <input
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          placeholder="CONFIRM"
-                          className="gym-input gym-input--password"
-                          name="confirmPassword"
-                          value={formData.confirmPassword}
-                          onChange={handleChange}
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="password-toggle-btn"
-                          onClick={() => setShowConfirmPassword((v) => !v)}
-                        >
-                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                        <div className="input-line"></div>
-                      </div>
-                    </div>
-
-                    <div className="flex mt-2">
-                      <label className="remember-checkbox">
-                        <input type="checkbox" required />
-                        <span className="checkmark"></span>
-                        <span className="label-text">
-                          I agree to Terms & Conditions
-                        </span>
-                      </label>
-                    </div>
-
-                    <button className="submit-btn" type="submit" disabled={loading}>
-                       {loading ? (
-                        <div className="gg-spin" />
-                      ) : (
-                        <>
-                          <span className="btn-text">JOIN GITGUARD</span>
-                          <Shield size={18} className="btn-icon" />
-                        </>
                       )}
-                    </button>
-                  </form>
+
+                      {success && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
+                          {success.includes('Developer Preview URL:') ? (
+                            <>
+                              <div>{success.split('Developer Preview URL:')[0]}</div>
+                              <a
+                                href={success.split('Developer Preview URL:')[1].trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-cyan-400 underline mt-1 inline-block hover:text-cyan-300"
+                              >
+                                Open Ethereal Mailbox
+                              </a>
+                            </>
+                          ) : (
+                            success
+                          )}
+                        </div>
+                      )}
+
+                      <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5 w-full">
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <KeyRound size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="6-DIGIT OTP"
+                            maxLength={6}
+                            className="gym-input font-mono tracking-[0.5em] text-center text-lg animate-[inputFadeIn_0.6s_ease-out_0.1s_backwards]"
+                            value={forgotOtp}
+                            onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                            required
+                          />
+                          <div className="input-line"></div>
+                        </div>
+
+                        <button className="submit-btn" type="submit" disabled={loading}>
+                          {loading ? (
+                            <div className="gg-spin" />
+                          ) : (
+                            <>
+                              <span className="btn-text">VERIFY OTP</span>
+                              <ShieldCheck size={18} className="btn-icon" />
+                            </>
+                          )}
+                        </button>
+
+                        <div className="flex flex-col gap-3 items-center mt-2">
+                          {cooldown > 0 ? (
+                            <span className="text-slate-500 text-sm font-medium">
+                              Resend code in {cooldown}s
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-cyan-400 hover:text-indigo-400 transition-colors text-sm font-semibold bg-transparent border-none cursor-pointer underline"
+                              onClick={handleResendOtp}
+                            >
+                              Resend OTP Code
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold bg-transparent border-none cursor-pointer animate-[inputFadeIn_0.6s_ease-out_0.2s_backwards]"
+                            onClick={() => {
+                              setForgotStep('email');
+                              setError(null);
+                              setSuccess(null);
+                            }}
+                          >
+                            <ArrowLeft size={16} /> Back to Email
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {forgotStep === 'reset' && (
+                    <div className="flex flex-col gap-5 w-full">
+                      <div className="text-center mb-2">
+                        <h2 className="font-['Inter'] font-extrabold text-2xl tracking-wide text-white mb-2 drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                          NEW PASSWORD
+                        </h2>
+                        <p className="text-slate-400 text-sm tracking-wide">
+                          Define a secure password for your sentinel access
+                        </p>
+                      </div>
+
+                      {error && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
+                          {error}
+                        </div>
+                      )}
+
+                      {success && (
+                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
+                          {success}
+                        </div>
+                      )}
+
+                      <form onSubmit={handleResetPassword} className="flex flex-col gap-5 w-full">
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <Lock size={18} />
+                          </div>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="NEW PASSWORD (MIN 8 CHARS)"
+                            className="gym-input gym-input--password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowPassword((v) => !v)}
+                          >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                          <div className="input-line"></div>
+                        </div>
+
+                        <div className="input-wrapper">
+                          <div className="input-icon">
+                            <Lock size={18} />
+                          </div>
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            placeholder="CONFIRM NEW PASSWORD"
+                            className="gym-input gym-input--password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowConfirmPassword((v) => !v)}
+                          >
+                            {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                          <div className="input-line"></div>
+                        </div>
+
+                        <button className="submit-btn" type="submit" disabled={loading}>
+                          {loading ? (
+                            <div className="gg-spin" />
+                          ) : (
+                            <>
+                              <span className="btn-text">RESET PASSWORD</span>
+                              <Zap size={18} className="btn-icon" />
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 mt-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold mx-auto bg-transparent border-none cursor-pointer"
+                          onClick={() => {
+                            setForgotStep('otp');
+                            setError(null);
+                            setSuccess(null);
+                          }}
+                        >
+                          <ArrowLeft size={16} /> Back
+                        </button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

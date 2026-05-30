@@ -7,11 +7,13 @@ import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { generateState, generateCodeVerifier } from 'arctic';
+import crypto from 'crypto';
 import { env } from '../config/env';
 import { github } from '../lib/arctic';
 import { User } from '../models/User';
 import { logger } from '../lib/logger';
 import { AuthError, DatabaseError } from '../lib/errors';
+import * as mailService from '../services/mailService';
 
 interface GitHubUserResponse {
   id: number;
@@ -215,11 +217,12 @@ export const login = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const { login, password } = req.body;
+  const { login, email, password } = req.body;
+  const loginIdentifier = login || email;
 
   try {
     const user = await User.findOne({ 
-      $or: [{ email: login }, { login }] 
+      $or: [{ email: loginIdentifier }, { login: loginIdentifier }] 
     }).select('+password');
 
     if (!user || !user.password) {
@@ -288,4 +291,169 @@ export const getMe = async (
 export const logout = (_req: Request, res: Response): void => {
   res.clearCookie('token');
   res.status(200).json({ success: true, message: 'Logged out successfully' });
+};
+
+/**
+ * Initiates the forgot password flow by generating and emailing a 6-digit OTP.
+ */
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      next(new AuthError('Email address is required'));
+      return;
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Security practice: do not leak if email exists or not
+      // Simply return success response so attackers can't scrape emails
+      res.status(200).json({
+        success: true,
+        message: 'If the email matches a registered account, an OTP has been sent.',
+      });
+      return;
+    }
+
+    // Generate a secure 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash the OTP before storing it
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.resetPasswordOtp = hashedOtp;
+    user.resetPasswordOtpExpires = otpExpires;
+    await user.save();
+
+    // Construct security metadata for audit log in the email
+    const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'Unknown IP';
+    // Clean up IPv6 loopback or proxy formatting if present
+    const ip = rawIp.startsWith('::ffff:') ? rawIp.substring(7) : rawIp === '::1' ? '127.0.0.1' : rawIp;
+    const userAgent = req.headers['user-agent'] || 'Unknown Client';
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'UTC',
+      dateStyle: 'medium',
+      timeStyle: 'medium',
+    }) + ' UTC';
+
+    // Send the email
+    const previewUrl = await mailService.sendOtpEmail(user.email, user.login, otp, {
+      ip,
+      userAgent,
+      timestamp,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'If the email matches a registered account, an OTP has been sent.',
+      ...(previewUrl ? { previewUrl } : {}), // For testing/dev purposes
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verifies if the user-supplied OTP is valid and not expired.
+ */
+export const verifyOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { email, otp } = req.body;
+
+  try {
+    if (!email || !otp) {
+      next(new AuthError('Email and OTP code are required'));
+      return;
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.resetPasswordOtp || !user.resetPasswordOtpExpires) {
+      next(new AuthError('Invalid email or OTP code'));
+      return;
+    }
+
+    // Check expiration
+    if (new Date() > user.resetPasswordOtpExpires) {
+      next(new AuthError('OTP code has expired'));
+      return;
+    }
+
+    // Hash user-submitted OTP to compare with DB
+    const hashedSubmittedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    if (hashedSubmittedOtp !== user.resetPasswordOtp) {
+      next(new AuthError('Invalid email or OTP code'));
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Resets the password using the OTP verification.
+ */
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { email, otp, password } = req.body;
+
+  try {
+    if (!email || !otp || !password) {
+      next(new AuthError('Email, OTP, and new password are required'));
+      return;
+    }
+
+    if (password.length < 8) {
+      next(new AuthError('Password must be at least 8 characters long'));
+      return;
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.resetPasswordOtp || !user.resetPasswordOtpExpires) {
+      next(new AuthError('Invalid request or OTP code'));
+      return;
+    }
+
+    // Check expiration
+    if (new Date() > user.resetPasswordOtpExpires) {
+      next(new AuthError('OTP code has expired'));
+      return;
+    }
+
+    // Check OTP match
+    const hashedSubmittedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    if (hashedSubmittedOtp !== user.resetPasswordOtp) {
+      next(new AuthError('Invalid request or OTP code'));
+      return;
+    }
+
+    // Success: update password and clear OTP fields
+    user.password = password; // pre-save hook will hash it
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordOtpExpires = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. Please log in with your new password.',
+    });
+  } catch (error) {
+    next(error);
+  }
 };

@@ -163,7 +163,8 @@ export const githubCallback = async (
 
     logger.info({ userId: user._id, login: user.login }, 'User authenticated successfully');
     const firstOrigin = env.ALLOWED_ORIGINS.split(',')[0].trim();
-    res.redirect(`${firstOrigin}/dashboard`);
+    // Append gh_login=1 so the frontend can detect a GitHub OAuth arrival and show a toast
+    res.redirect(`${firstOrigin}/dashboard?gh_login=1`);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logger.error({ error }, 'GitHub OAuth Callback failed');

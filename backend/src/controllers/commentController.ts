@@ -192,3 +192,22 @@ export const getBadge = async (
     });
   }
 };
+
+/**
+ * Retrieves the GitHub comment document associated with a specific review ID.
+ * GET /api/comments/review/:reviewId
+ */
+export const getCommentByReviewId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { reviewId } = req.params;
+  try {
+    const comment = await GitHubComment.findOne({ reviewId, status: { $ne: 'archived' } });
+    res.status(200).json({ success: true, comment });
+  } catch (error) {
+    logger.error({ error, reviewId }, 'Failed to get comment by reviewId');
+    next(error);
+  }
+};

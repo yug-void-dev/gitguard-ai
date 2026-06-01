@@ -42,6 +42,13 @@ router.use(protect);
 router.get('/', commentController.listAllComments);
 
 /**
+ * @route   GET /api/comments/review/:reviewId
+ * @desc    Get comment details for a specific review
+ * @access  Private
+ */
+router.get('/review/:reviewId', commentController.getCommentByReviewId);
+
+/**
  * @route   GET /api/comments/:repositoryId
  * @desc    List comments for a specific repository
  * @access  Private

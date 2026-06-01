@@ -17,7 +17,7 @@ import { getQueueMetrics, type QueueMetricsResponse } from '../services/queue.se
 import { ROUTES } from '../constants/routes';
 
 // Import extracted components
-import { NeuralBG, FloatingParticles } from '../components/dashboard/NeuralBackground';
+import { AppBackground } from '../components/layout/AppBackground';
 import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 import { DashboardActivityChart, DashboardHealthRing } from '../components/dashboard/DashboardCharts';
 import { DashboardTerminal } from '../components/dashboard/DashboardTerminal';
@@ -112,40 +112,8 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
 
   return (
     <div style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
-      {/* Background Effects */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }}>
-        <NeuralBG />
-        <FloatingParticles />
-        {[
-          { c: 'rgba(6,182,212,0.06)', s: 480, t: '-5%', l: '-5%' },
-          { c: 'rgba(129,140,248,0.05)', s: 400, t: '55%', l: '62%' },
-          { c: 'rgba(16,185,129,0.04)', s: 340, t: '78%', l: '22%' },
-        ].map((b, i) => (
-          <motion.div
-            key={i}
-            animate={{ scale: [1, 1.1, 0.92, 1] }}
-            transition={{ duration: 20, repeat: Infinity, delay: i * 6 }}
-            style={{
-              position: 'absolute',
-              borderRadius: '50%',
-              width: b.s,
-              height: b.s,
-              top: b.t,
-              left: b.l,
-              background: `radial-gradient(circle,${b.c},transparent 70%)`,
-              filter: 'blur(65px)',
-            }}
-          />
-        ))}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: `linear-gradient(rgba(6,182,212,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.022) 1px,transparent 1px)`,
-            backgroundSize: '48px 48px',
-          }}
-        />
-      </div>
+      {/* Background Effects — shared AppBackground */}
+      <AppBackground />
 
       <motion.div
         initial={{ opacity: 0, y: 8 }}

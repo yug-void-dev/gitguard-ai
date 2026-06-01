@@ -43,10 +43,24 @@ export const getReview = async (reviewId: string): Promise<Review> => {
   };
 };
 
+export const getCommentByReview = async (reviewId: string): Promise<any> => {
+  const { data } = await api.get<{ success: boolean; comment: any }>(`/comments/review/${reviewId}`);
+  return data.comment;
+};
+
+export const applySuggestion = async (commentId: string, findingId: string): Promise<any> => {
+  const { data } = await api.post<{ success: boolean; commitSha?: string }>(`/comments/${commentId}/apply`, {
+    findingId,
+  });
+  return data;
+};
+
 const reviewService = {
   getReviews,
   getReviewStats,
   getReview,
+  getCommentByReview,
+  applySuggestion,
 };
 
 export default reviewService;

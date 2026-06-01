@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Particles, { initParticlesEngine } from '@tsparticles/react';
-import { loadSlim } from '@tsparticles/slim';
 import * as THREE from 'three';
 import { useAuth } from '../hooks/useAuth';
 import { Shield, Mail, Lock, User, Zap, Eye, EyeOff, ArrowLeft, KeyRound, ShieldCheck, MailOpen } from 'lucide-react';
 import { authService } from '../services/auth.service';
+import { FloatingBubbles } from '../components/layout/FloatingBubbles';
+import { useToast } from '../context/ToastContext';
 
 
 
@@ -476,11 +476,9 @@ const SentinelGraphic: React.FC = () => {
 const LoginPage: React.FC = () => {
   const { user, login, register, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [init, setInit] = useState(false);
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('login');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -508,22 +506,27 @@ const LoginPage: React.FC = () => {
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     try {
       const data = await authService.forgotPassword(forgotEmail);
       if (data.success) {
-        setSuccess(data.message);
+        toast.success(
+          'Security Code Sent',
+          'A secure verification code has been successfully dispatched to your email address.'
+        );
         if (data.previewUrl) {
           console.log('Dev Ethereal Email Preview:', data.previewUrl);
-          // Show the link directly in dev environment for easy verification
-          setSuccess(`OTP sent! Developer Preview URL: ${data.previewUrl}`);
+          toast.info(
+            'Developer Preview Email',
+            `Link: ${data.previewUrl}`,
+            10000
+          );
         }
         setForgotStep('otp');
         setCooldown(60);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to send OTP');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to dispatch verification code.';
+      toast.error('Dispatch Failed', errMsg);
     } finally {
       setLoading(false);
     }
@@ -532,16 +535,18 @@ const LoginPage: React.FC = () => {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     try {
       const data = await authService.verifyOtp(forgotEmail, forgotOtp);
       if (data.success) {
-        setSuccess('OTP verified successfully. Please enter your new password.');
+        toast.success(
+          'OTP Verified Successfully',
+          'Your security token is valid. Please define a secure new password.'
+        );
         setForgotStep('reset');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'OTP verification failed');
+      const errMsg = err.response?.data?.message || err.message || 'The OTP code is invalid or has expired.';
+      toast.error('Verification Failed', errMsg);
     } finally {
       setLoading(false);
     }
@@ -550,20 +555,21 @@ const LoginPage: React.FC = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmNewPassword) {
-      setError("Passwords do not match");
+      toast.warning('Password Mismatch', 'The passwords entered do not match. Please verify your entries.');
       return;
     }
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+      toast.warning('Invalid Length', 'For optimal protection, your password must be at least 8 characters long.');
       return;
     }
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     try {
       const data = await authService.resetPassword(forgotEmail, forgotOtp, newPassword);
       if (data.success) {
-        setSuccess('Password reset successfully! You can now log in.');
+        toast.success(
+          'Password Reset Confirmed',
+          'Your new credentials are active. You may now access the sentinel.'
+        );
         setForgotStep('none');
         setTab('login');
         setForgotEmail('');
@@ -572,7 +578,8 @@ const LoginPage: React.FC = () => {
         setConfirmNewPassword('');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to reset password');
+      const errMsg = err.response?.data?.message || err.message || 'An error occurred while updating your password.';
+      toast.error('Failed to Reset Password', errMsg);
     } finally {
       setLoading(false);
     }
@@ -580,55 +587,25 @@ const LoginPage: React.FC = () => {
 
   const handleResendOtp = async () => {
     if (cooldown > 0) return;
-    setError(null);
-    setSuccess(null);
     try {
       const data = await authService.forgotPassword(forgotEmail);
       if (data.success) {
-        setSuccess('A new OTP has been sent to your email.');
+        toast.success('Security Code Re-sent', 'A fresh code has been transmitted.');
         if (data.previewUrl) {
           console.log('Dev Ethereal Email Preview:', data.previewUrl);
-          setSuccess(`New OTP sent! Developer Preview URL: ${data.previewUrl}`);
+          toast.info('Developer Preview Email', `Link: ${data.previewUrl}`, 10000);
         }
         setCooldown(60);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to resend OTP');
+      const errMsg = err.response?.data?.message || err.message || 'Could not re-transmit verification code.';
+      toast.error('Resend Failed', errMsg);
     }
   };
 
   useEffect(() => {
     if (user && !authLoading) navigate('/dashboard');
   }, [user, authLoading, navigate]);
-
-  useEffect(() => {
-    initParticlesEngine(async (engine) => {
-      await loadSlim(engine);
-    }).then(() => setInit(true));
-  }, []);
-
-  const particlesOptions = useMemo(
-    () => ({
-      fullScreen: { enable: false },
-      background: { color: { value: 'transparent' } },
-      fpsLimit: 60,
-      interactivity: {
-        events: { onHover: { enable: true, mode: 'grab' } },
-        modes: { grab: { distance: 120, links: { opacity: 0.3 } } },
-      },
-      particles: {
-        color: { value: '#6366f1' },
-        links: { color: '#6366f1', distance: 130, enable: true, opacity: 0.12, width: 1 },
-        move: { enable: true, outModes: { default: 'bounce' as const }, random: true, speed: 0.7 },
-        number: { density: { enable: true }, value: 55 },
-        opacity: { value: 0.22 },
-        shape: { type: 'circle' },
-        size: { value: { min: 1, max: 2.5 } },
-      },
-      detectRetina: true,
-    }),
-    []
-  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -641,7 +618,6 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     try {
       if (tab === 'login') {
         await login({ login: formData.login, password: formData.password });
@@ -649,12 +625,22 @@ const LoginPage: React.FC = () => {
           ? localStorage.setItem('gg_remembered_login', formData.login)
           : localStorage.removeItem('gg_remembered_login');
         
+        toast.success(
+          'Login Successful',
+          'Access authorized. Deploying the GitGuard AI Sentinel...'
+        );
         navigate('/dashboard');
       } else {
-        if (formData.password !== formData.confirmPassword)
-          throw new Error("Passwords don't match");
-        if (formData.password.length < 8)
-          throw new Error('Password must be at least 8 characters');
+        if (formData.password !== formData.confirmPassword) {
+          toast.warning('Password Mismatch', 'The registration passwords do not match. Please verify.');
+          setLoading(false);
+          return;
+        }
+        if (formData.password.length < 8) {
+          toast.warning('Weak Password', 'For optimal defense, security keys must be at least 8 characters long.');
+          setLoading(false);
+          return;
+        }
         
         await register({
           login: formData.login,
@@ -662,19 +648,42 @@ const LoginPage: React.FC = () => {
           password: formData.password,
         });
 
-        // Switch back to the login tab so the user can manually authenticate
+        toast.success(
+          'Registration Complete',
+          'Your sentinel account has been deployed. You can now log in.'
+        );
         setTab('login');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Authentication failed');
+      const errMsg = err.response?.data?.message || err.message || 'Authentication sequence failed.';
+      toast.error('Access Denied', errMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGitHub = () => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-    window.location.href = `${baseUrl}/auth/github`;
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const githubUrl = `${baseUrl}/auth/github`;
+
+      // Show toast before redirecting — user sees feedback instantly
+      toast.info(
+        'Redirecting to GitHub',
+        'Opening GitHub OAuth authorization. You will be redirected back automatically after signing in.',
+        3000
+      );
+
+      // Brief delay so the toast renders before the page navigates away
+      setTimeout(() => {
+        window.location.href = githubUrl;
+      }, 800);
+    } catch (err: any) {
+      toast.error(
+        'GitHub Sign-In Unavailable',
+        'Unable to initiate GitHub OAuth. Please try email login or check your connection.'
+      );
+    }
   };
 
   return (
@@ -727,11 +736,19 @@ const LoginPage: React.FC = () => {
 
         {/* ── RIGHT (NEW FORM SECTION) ── */}
         <div className="flex-1 w-full md:w-1/2 flex items-center justify-center p-6 md:p-8 bg-[#0a0b1e]/95 backdrop-blur-md relative overflow-y-auto border-l border-indigo-500/20">
-          {init && (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-              <Particles id="tsparticles" options={particlesOptions} />
-            </div>
-          )}
+          <FloatingBubbles count={12} variant="login" />
+
+          {/* Content-protection vignette — keeps form readable over the bubbles */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(ellipse 90% 80% at 50% 50%, rgba(10,11,30,0.0) 0%, rgba(10,11,30,0.3) 60%, rgba(10,11,30,0.65) 100%)`,
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
 
           <div className="w-full max-w-[480px] relative z-10 animate-[formSlideIn_1s_ease-out_0.5s_backwards] flex flex-col items-center">
             
@@ -773,17 +790,7 @@ const LoginPage: React.FC = () => {
                         </p>
                       </div>
 
-                      {error && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                          {error}
-                        </div>
-                      )}
-
-                      {success && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
-                          {success}
-                        </div>
-                      )}
+                      {/* Toastify triggers alerts directly; static status badges removed */}
 
                       <div className="w-full flex">
                         <button type="button" onClick={handleGitHub} className="flex-1 flex items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer text-slate-200 font-['Inter'] font-semibold text-[1.05rem] transition-all duration-200 hover:bg-white/10 hover:border-white/20 hover:text-white" style={{ padding: '1.2rem 2rem', minHeight: '56px', width: '100%' }}>
@@ -856,8 +863,6 @@ const LoginPage: React.FC = () => {
                             className="forgot-link"
                             onClick={() => {
                               setForgotStep('email');
-                              setError(null);
-                              setSuccess(null);
                             }}
                           >
                             Forgot Password?
@@ -889,11 +894,7 @@ const LoginPage: React.FC = () => {
                         </p>
                       </div>
 
-                      {error && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                          {error}
-                        </div>
-                      )}
+                      {/* Toastify triggers alerts directly; static status badges removed */}
 
                       <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
                         
@@ -1014,31 +1015,7 @@ const LoginPage: React.FC = () => {
                         </p>
                       </div>
 
-                      {error && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                          {error}
-                        </div>
-                      )}
-
-                      {success && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
-                          {success.includes('Developer Preview URL:') ? (
-                            <>
-                              <div>{success.split('Developer Preview URL:')[0]}</div>
-                              <a
-                                href={success.split('Developer Preview URL:')[1].trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-cyan-400 underline mt-1 inline-block hover:text-cyan-300"
-                              >
-                                Open Ethereal Mailbox
-                              </a>
-                            </>
-                          ) : (
-                            success
-                          )}
-                        </div>
-                      )}
+                      {/* Toastify triggers alerts directly; static status badges removed */}
 
                       <form onSubmit={handleRequestOtp} className="flex flex-col gap-5 w-full">
                         <div className="input-wrapper">
@@ -1072,8 +1049,6 @@ const LoginPage: React.FC = () => {
                           className="flex items-center justify-center gap-2 mt-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold mx-auto bg-transparent border-none cursor-pointer"
                           onClick={() => {
                             setForgotStep('none');
-                            setError(null);
-                            setSuccess(null);
                           }}
                         >
                           <ArrowLeft size={16} /> Back to Login
@@ -1093,32 +1068,6 @@ const LoginPage: React.FC = () => {
                           We sent a 6-digit verification code to <span className="text-cyan-400 font-medium">{forgotEmail}</span>
                         </p>
                       </div>
-
-                      {error && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                          {error}
-                        </div>
-                      )}
-
-                      {success && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
-                          {success.includes('Developer Preview URL:') ? (
-                            <>
-                              <div>{success.split('Developer Preview URL:')[0]}</div>
-                              <a
-                                href={success.split('Developer Preview URL:')[1].trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-cyan-400 underline mt-1 inline-block hover:text-cyan-300"
-                              >
-                                Open Ethereal Mailbox
-                              </a>
-                            </>
-                          ) : (
-                            success
-                          )}
-                        </div>
-                      )}
 
                       <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5 w-full">
                         <div className="input-wrapper">
@@ -1168,8 +1117,6 @@ const LoginPage: React.FC = () => {
                             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold bg-transparent border-none cursor-pointer animate-[inputFadeIn_0.6s_ease-out_0.2s_backwards]"
                             onClick={() => {
                               setForgotStep('email');
-                              setError(null);
-                              setSuccess(null);
                             }}
                           >
                             <ArrowLeft size={16} /> Back to Email
@@ -1189,18 +1136,6 @@ const LoginPage: React.FC = () => {
                           Define a secure password for your sentinel access
                         </p>
                       </div>
-
-                      {error && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
-                          {error}
-                        </div>
-                      )}
-
-                      {success && (
-                        <div className="w-full mb-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium text-center">
-                          {success}
-                        </div>
-                      )}
 
                       <form onSubmit={handleResetPassword} className="flex flex-col gap-5 w-full">
                         <div className="input-wrapper">
@@ -1263,8 +1198,6 @@ const LoginPage: React.FC = () => {
                           className="flex items-center justify-center gap-2 mt-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold mx-auto bg-transparent border-none cursor-pointer"
                           onClick={() => {
                             setForgotStep('otp');
-                            setError(null);
-                            setSuccess(null);
                           }}
                         >
                           <ArrowLeft size={16} /> Back

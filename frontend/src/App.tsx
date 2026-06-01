@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router-dom';
 import router from './router';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 
 /**
  * App is the single top-level component.
@@ -11,7 +12,9 @@ import { ThemeProvider } from './context/ThemeContext';
 const App = () => (
   <ThemeProvider>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </AuthProvider>
   </ThemeProvider>
 );

@@ -2,16 +2,19 @@
  * @file layouts/DashboardLayout.tsx
  * @description Shell layout for all protected dashboard routes.
  * Composes: Sidebar (left) + vertical content area (Navbar top + <Outlet>).
- * The sidebar can be collapsed; state is persisted to localStorage.
+ * Sidebar collapse/expand uses a silky spring transition.
+ * Locomotive Scroll v5 (Lenis) applied to the main content scroller.
  */
 
-import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
+import { AppBackground } from '../components/layout/AppBackground';
 import { STORAGE_KEYS } from '../constants/config';
 import { useTheme } from '../hooks/useTheme';
+import { useToast } from '../context/ToastContext';
+import LocomotiveScroll from 'locomotive-scroll';
 
 /**
  * DashboardLayout assembles the main application chrome:
@@ -23,7 +26,34 @@ import { useTheme } from '../hooks/useTheme';
  *  └──────────┴────────────────────────────┘
  */
 const DashboardLayout: React.FC = () => {
-  const { theme } = useTheme(); // Force re-render on theme change
+  const { theme } = useTheme();
+  const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const scrollContainerRef = useRef<HTMLElement>(null);
+
+  // ── GitHub OAuth arrival toast ──────────────────────────────────────────────
+  useEffect(() => {
+    if (searchParams.get('gh_login') === '1') {
+      // Small delay so the dashboard finishes mounting before the toast appears
+      const t = setTimeout(() => {
+        toast.success(
+          '🔐 GitHub Authorization Successful',
+          'Welcome! Your GitHub account has been linked. GitGuard AI Sentinel is now active and monitoring your repositories.',
+          6000
+        );
+      }, 600);
+
+      // Strip the query param so a refresh doesn't retrigger the toast
+      setSearchParams((prev) => {
+        prev.delete('gh_login');
+        return prev;
+      }, { replace: true });
+
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';
@@ -32,6 +62,7 @@ const DashboardLayout: React.FC = () => {
     }
   });
 
+  // Persist sidebar state
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(sidebarCollapsed));
@@ -39,6 +70,33 @@ const DashboardLayout: React.FC = () => {
       // ignore
     }
   }, [sidebarCollapsed]);
+
+  // ── Locomotive Scroll (Lenis) on the main content container ──
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    // Locomotive Scroll v5 wraps Lenis.
+    // We target the specific scrollable container element.
+    const locomotiveScroll = new LocomotiveScroll({
+      lenisOptions: {
+        wrapper: el,
+        content: el,
+        smoothWheel: true,
+        duration: 1.1,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: 'vertical',
+        gestureOrientation: 'vertical',
+        wheelMultiplier: 1.0,
+        touchMultiplier: 2,
+        infinite: false,
+      },
+    });
+
+    return () => {
+      locomotiveScroll.destroy();
+    };
+  }, []);
 
   const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
 
@@ -51,39 +109,46 @@ const DashboardLayout: React.FC = () => {
         background: 'var(--bg-deep)',
         fontFamily: 'var(--font-body)',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
+      {/* ── Global ambient background (bubbles + glows) rendered once for all pages ── */}
+      <AppBackground />
+
       {/* ── Sidebar ── */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* ── Main column ── */}
-      <motion.div
-        animate={{ flex: 1 }}
-        transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+      <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
           overflow: 'hidden',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* ── Navbar ── */}
         <Navbar onMenuClick={toggleSidebar} />
 
-        {/* ── Page content ── */}
+        {/* ── Page content with Locomotive Scroll ── */}
         <main
+          ref={scrollContainerRef}
           style={{
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',
             padding: '24px 28px',
             position: 'relative',
+            // Native smooth scroll as CSS fallback
+            scrollBehavior: 'smooth',
           }}
         >
           <Outlet />
         </main>
-      </motion.div>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 /**
  * @file components/layout/Sidebar.tsx
- * @description Collapsible left-side navigation sidebar.
+ * @description Collapsible left-side navigation sidebar with silky-smooth spring animation.
  */
 
 import React from 'react';
@@ -34,16 +34,20 @@ const NAV_ITEMS = [
   { to: ROUTES.SETTINGS,     icon: Settings,         label: 'Settings'     },
 ] as const;
 
+// Smooth spring — high stiffness for snappiness but enough damping to kill oscillation
+const SPRING = { type: 'spring' as const, stiffness: 320, damping: 32, mass: 0.9 };
+
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
   return (
     <motion.aside
+      initial={false}
       animate={{ width: collapsed ? 68 : 240 }}
-      transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+      transition={SPRING}
       style={{
-        minWidth: collapsed ? 68 : 240,
+        // minWidth tracks width automatically via the motion value
         height: '100vh',
         position: 'sticky',
         top: 0,
@@ -57,6 +61,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         zIndex: 50,
         flexShrink: 0,
         overflow: 'hidden',
+        // willChange for GPU compositing — avoids layout thrashing
+        willChange: 'width',
       }}
     >
       {/* ─── Header ─── */}
@@ -67,44 +73,51 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           display: 'flex',
           alignItems: 'center',
           borderBottom: `1px solid ${T.border}`,
-          /* padding changes based on state */
-          padding: collapsed ? '0 14px' : '0 14px',
+          padding: '0 14px',
           justifyContent: collapsed ? 'center' : 'space-between',
           gap: 10,
           overflow: 'hidden',
         }}
       >
-        {/* ── Collapsed: show only hamburger to expand ── */}
-        {collapsed && (
-          <motion.button
-            key="menu-btn"
-            whileHover={{ scale: 1.1, backgroundColor: 'rgba(99,102,241,0.18)' }}
-            whileTap={{ scale: 0.88 }}
-            onClick={onToggle}
-            title="Expand sidebar"
-            style={{
-              width: 38,
-              height: 38,
-              background: 'rgba(99,102,241,0.08)',
-              border: '1px solid rgba(99,102,241,0.22)',
-              borderRadius: 10,
-              color: '#94a3b8',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Menu size={16} />
-          </motion.button>
-        )}
-
-        {/* ── Expanded: logo + brand + close ── */}
-        {!collapsed && (
-          <>
-            {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          {collapsed ? (
+            /* Collapsed: hamburger only */
+            <motion.button
+              key="menu-btn"
+              initial={{ opacity: 0, scale: 0.75 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.75 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              whileHover={{ scale: 1.1, backgroundColor: 'rgba(99,102,241,0.18)' }}
+              whileTap={{ scale: 0.88 }}
+              onClick={onToggle}
+              title="Expand sidebar"
+              style={{
+                width: 38,
+                height: 38,
+                background: 'rgba(99,102,241,0.08)',
+                border: '1px solid rgba(99,102,241,0.22)',
+                borderRadius: 10,
+                color: '#94a3b8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Menu size={16} />
+            </motion.button>
+          ) : (
+            /* Expanded: logo + brand + close */
+            <motion.div
+              key="expanded-header"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 10 }}
+            >
               <motion.div
                 whileHover={{ scale: 1.06 }}
                 style={{
@@ -122,10 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                 <ShieldCheck size={17} color="#fff" />
               </motion.div>
 
-              <motion.span
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.2 }}
+              <span
                 style={{
                   fontFamily: 'var(--font-display,Outfit,Inter)',
                   fontWeight: 800,
@@ -135,36 +145,36 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
+                  flex: 1,
                 }}
               >
                 {APP_NAME}
-              </motion.span>
-            </div>
+              </span>
 
-            {/* X / collapse button */}
-            <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: 'rgba(99,102,241,0.18)' }}
-              whileTap={{ scale: 0.88 }}
-              onClick={onToggle}
-              title="Collapse sidebar"
-              style={{
-                width: 30,
-                height: 30,
-                background: 'rgba(99,102,241,0.08)',
-                border: '1px solid rgba(99,102,241,0.22)',
-                borderRadius: 8,
-                color: '#94a3b8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <X size={14} />
-            </motion.button>
-          </>
-        )}
+              <motion.button
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(99,102,241,0.18)' }}
+                whileTap={{ scale: 0.88 }}
+                onClick={onToggle}
+                title="Collapse sidebar"
+                style={{
+                  width: 30,
+                  height: 30,
+                  background: 'rgba(99,102,241,0.08)',
+                  border: '1px solid rgba(99,102,241,0.22)',
+                  borderRadius: 8,
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <X size={14} />
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ─── Nav ─── */}

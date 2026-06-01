@@ -20,7 +20,7 @@ interface Slice {
 }
 
 function buildSlices(reviews: Review[]): Slice[] {
-  const counts: Record<string, number> = { high: 0, medium: 0, low: 0, info: 0 };
+  const counts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
   for (const r of reviews) {
     for (const f of r.findings) {
       counts[f.severity] = (counts[f.severity] ?? 0) + 1;

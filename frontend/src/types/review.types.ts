@@ -1,7 +1,7 @@
 export interface ReviewFinding {
   file: string;
   line: number;
-  severity: 'high' | 'medium' | 'low' | 'info';
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
   message: string;
   suggestion: string;
   confidence: number;

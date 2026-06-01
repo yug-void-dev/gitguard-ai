@@ -20,10 +20,12 @@ import {
   Code,
   FileText,
 } from 'lucide-react';
-import { getReview } from '../services/review.service';
+import { getReview, getCommentByReview, applySuggestion } from '../services/review.service';
 import type { Review } from '../types/review.types';
 import { AppBackground } from '../components/layout/AppBackground';
 import { T } from '../constants/theme';
+import { useToast } from '../context/ToastContext';
+import { SideBySideDiff } from '../components/reviews/SideBySideDiff';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -36,6 +38,7 @@ const statusConfig = {
 
 // ─── Severity configuration ────────────────────────────────────────────────────
 const severityConfig = {
+  critical: { bg: `${T.rose}20`, text: T.rose, border: `${T.rose}45`, label: 'CRITICAL', color: T.rose },
   high: { bg: `${T.red}15`, text: T.red, border: `${T.red}35`, label: 'HIGH', color: T.red },
   medium: { bg: `${T.amber}15`, text: T.amber, border: `${T.amber}35`, label: 'MEDIUM', color: T.amber },
   low: { bg: `${T.cyan}15`, text: T.cyan, border: `${T.cyan}35`, label: 'LOW', color: T.cyan },
@@ -153,9 +156,49 @@ const GlowCard: React.FC<{
 };
 
 // ─── Finding Card ────────────────────────────────────────────────────────────
-const FindingCard: React.FC<{ finding: Review['findings'][number]; delay: number }> = ({ finding, delay }) => {
+interface FindingCardProps {
+  finding: Review['findings'][number];
+  delay: number;
+  commentId: string | null;
+  isApplied: boolean;
+  onApplySuccess: (findingId: string, commitHash: string) => void;
+}
+
+const FindingCard: React.FC<FindingCardProps> = ({
+  finding,
+  delay,
+  commentId,
+  isApplied,
+  onApplySuccess,
+}) => {
   const config = severityConfig[finding.severity] || severityConfig.info;
   const sevColor = config.color;
+  const toast = useToast();
+  const [applying, setApplying] = useState(false);
+
+  const handleApplyFix = async () => {
+    if (!commentId) return;
+    const findingId = finding._id?.toString() || finding.id;
+    if (!findingId) return;
+
+    setApplying(true);
+    try {
+      const result = await applySuggestion(commentId, findingId);
+      if (result.success) {
+        toast.success('🔐 Suggestion Applied', 'Successfully committed fix to PR branch.');
+        onApplySuccess(findingId, result.commitSha || '');
+      } else {
+        toast.error('❌ Apply Failed', result.message || 'Unknown error occurred.');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? err.message ?? 'Failed to apply suggestion';
+      toast.error('❌ Apply Failed', msg);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const showApplyButton = (finding.severity === 'critical' || finding.severity === 'high') && finding.suggestion && commentId;
 
   return (
     <GlowCard color={sevColor} delay={delay}>
@@ -193,6 +236,75 @@ const FindingCard: React.FC<{ finding: Review['findings'][number]; delay: number
             <strong style={{ color: sevColor, marginRight: 6 }}>SUGGESTION:</strong> {finding.suggestion}
           </p>
         </div>
+
+        {showApplyButton && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+            {isApplied ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  background: 'rgba(16,185,129,0.1)',
+                  border: `1px solid ${T.green}40`,
+                  color: T.green,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                <CheckCircle2 size={13} />
+                Fix Applied
+              </span>
+            ) : (
+              <motion.button
+                whileHover={applying ? {} : { scale: 1.03 }}
+                whileTap={applying ? {} : { scale: 0.97 }}
+                onClick={handleApplyFix}
+                disabled={applying}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  background: applying ? 'rgba(255,255,255,0.05)' : `linear-gradient(135deg, ${T.cyan}, ${T.violet})`,
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: applying ? 'wait' : 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                  boxShadow: applying ? 'none' : `0 4px 10px ${T.cyan}25`,
+                }}
+              >
+                {applying ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }}
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        border: '2px solid rgba(255,255,255,0.2)',
+                        borderTopColor: '#fff',
+                      }}
+                    />
+                    Applying...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={13} />
+                    Apply Fix
+                  </>
+                )}
+              </motion.button>
+            )}
+          </div>
+        )}
       </div>
     </GlowCard>
   );
@@ -203,6 +315,7 @@ const ReviewDetailPage: React.FC = () => {
   const { reviewId } = useParams<{ reviewId: string }>();
   const navigate = useNavigate();
   const [review, setReview] = useState<Review | null>(null);
+  const [comment, setComment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [btnHover, setBtnHover] = useState(false);
@@ -218,13 +331,55 @@ const ReviewDetailPage: React.FC = () => {
     setError(null);
 
     getReview(reviewId)
-      .then((data) => setReview(data))
+      .then((data) => {
+        setReview(data);
+        getCommentByReview(reviewId)
+          .then((commentData) => setComment(commentData))
+          .catch((err) => {
+            console.warn('Failed to fetch comment for review', err);
+            setComment(null);
+          });
+      })
       .catch((fetchError) => {
         const message = fetchError?.response?.data?.message ?? fetchError.message ?? 'Unable to load review.';
         setError(message);
       })
       .finally(() => setLoading(false));
   }, [reviewId]);
+
+  const handleApplySuccess = (findingId: string, commitSha: string) => {
+    setComment((prevComment: any) => {
+      if (!prevComment) {
+        return {
+          _id: '',
+          reviewId,
+          appliedSuggestions: [{
+            findingId,
+            status: 'applied',
+            commitHash: commitSha,
+            appliedAt: new Date()
+          }]
+        };
+      }
+      const updatedSuggestions = [...(prevComment.appliedSuggestions || [])];
+      const idx = updatedSuggestions.findIndex((s: any) => s.findingId === findingId);
+      const newApply = {
+        findingId,
+        status: 'applied',
+        commitHash: commitSha,
+        appliedAt: new Date(),
+      };
+      if (idx >= 0) {
+        updatedSuggestions[idx] = { ...updatedSuggestions[idx], ...newApply };
+      } else {
+        updatedSuggestions.push(newApply);
+      }
+      return {
+        ...prevComment,
+        appliedSuggestions: updatedSuggestions,
+      };
+    });
+  };
 
   const createdAt = review ? new Date(review.createdAt) : null;
   const updatedAt = review ? new Date(review.updatedAt) : null;
@@ -560,13 +715,23 @@ const ReviewDetailPage: React.FC = () => {
 
               {review.findings.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {review.findings.map((finding, index) => (
-                    <FindingCard
-                      key={`${finding.file}-${finding.line}-${index}`}
-                      finding={finding}
-                      delay={0.3 + index * 0.05}
-                    />
-                  ))}
+                  {review.findings.map((finding, index) => {
+                    const findingId = finding._id?.toString() || finding.id;
+                    const isApplied = comment?.appliedSuggestions?.some(
+                      (s: any) => (s.findingId === findingId || s.findingId === finding.id) && s.status === 'applied'
+                    ) ?? false;
+
+                    return (
+                      <FindingCard
+                        key={`${finding.file}-${finding.line}-${index}`}
+                        finding={finding}
+                        delay={0.3 + index * 0.05}
+                        commentId={comment?._id ?? null}
+                        isApplied={isApplied}
+                        onApplySuccess={handleApplySuccess}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <GlowCard color={T.green} delay={0.3}>
@@ -590,10 +755,6 @@ const ReviewDetailPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.3 }}
                 style={{
-                  background: T.panel,
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 16,
-                  padding: 20,
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 12,
@@ -602,48 +763,10 @@ const ReviewDetailPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Code size={18} color={T.cyan} />
                   <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>
-                    Review Diff Stream
+                    Review Diff Stream (Side-by-Side)
                   </h2>
                 </div>
-                <div style={{
-                  position: 'relative',
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  border: `1px solid ${T.border}`,
-                  background: '#020408',
-                }}>
-                  {/* editor header chrome */}
-                  <div style={{
-                    height: 32,
-                    background: '#090d16',
-                    borderBottom: `1px solid ${T.border}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0 12px',
-                    gap: 6,
-                  }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.red }} />
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.amber }} />
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.green }} />
-                    <span style={{ fontFamily: "'Fira Code', monospace", fontSize: 10, color: T.muted, marginLeft: 8 }}>
-                      git_diff_stream.patch
-                    </span>
-                  </div>
-                  <pre style={{
-                    maxHeight: 400,
-                    overflow: 'auto',
-                    margin: 0,
-                    padding: 16,
-                    fontFamily: "'Fira Code', monospace",
-                    fontSize: 12,
-                    lineHeight: 1.7,
-                    color: T.text,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                  }}>
-                    {review.diffData}
-                  </pre>
-                </div>
+                <SideBySideDiff diff={review.diffData} />
               </motion.section>
             ) : null}
 

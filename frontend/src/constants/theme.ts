@@ -40,6 +40,9 @@ export const T = {
   get red(): string {
     return isLight() ? '#dc2626' : '#ef4444';
   },
+  get rose(): string {
+    return isLight() ? '#e11d48' : '#f43f5e';
+  },
   get orange(): string {
     return isLight() ? '#ea580c' : '#f97316';
   },

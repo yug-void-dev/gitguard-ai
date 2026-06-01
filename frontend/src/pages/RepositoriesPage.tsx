@@ -34,10 +34,12 @@ import {
   ArrowUpDown,
   X,
   CheckCircle2,
-  XCircle,
   RefreshCw,
+  Copy,
 } from 'lucide-react';
 import { useRepository } from '../hooks/useRepository';
+import { useToast } from '../context/ToastContext';
+import { API_BASE_URL } from '../constants/config';
 import type { ConnectedRepo, Repository, RepositoryRule } from '../types/repository.types';
 import Spinner from '../components/common/Spinner';
 import { AppBackground } from '../components/layout/AppBackground';
@@ -397,12 +399,12 @@ const RepositoryCard: React.FC<RepoCardProps> = ({
           {[
             {
               label: 'Webhook',
-              val: repo.webhookId ? 'Connected' : 'Missing',
-              color: repo.webhookId ? T.green : T.red,
+              val: repo.webhookId ? 'Connected' : 'Pending Setup',
+              color: repo.webhookId ? T.green : T.amber,
               icon: repo.webhookId ? (
                 <CheckCircle2 size={11} />
               ) : (
-                <XCircle size={11} />
+                <AlertCircle size={11} />
               ),
             },
             {
@@ -734,7 +736,7 @@ interface SettingsProps {
   repo: ConnectedRepo;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, rules: Partial<RepositoryRule>) => void;
+  onSave: (id: string, rules: Partial<RepositoryRule>) => Promise<void>;
 }
 
 const RepositorySettings: React.FC<SettingsProps> = ({
@@ -743,6 +745,7 @@ const RepositorySettings: React.FC<SettingsProps> = ({
   onClose,
   onSave,
 }) => {
+  const toast = useToast();
   const [strictMode, setStrictMode] = useState(repo.rules.strictMode);
   const [ignoreLinting, setIgnoreLinting] = useState(repo.rules.ignoreLinting);
   const [checkPerf, setCheckPerf] = useState(repo.rules.checkPerformance);
@@ -751,15 +754,20 @@ const RepositorySettings: React.FC<SettingsProps> = ({
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600)); // simulate async
-    onSave(repo._id, {
-      strictMode,
-      ignoreLinting,
-      checkPerformance: checkPerf,
-      minConfidence: confidence,
-    });
-    setSaving(false);
-    onClose();
+    try {
+      await onSave(repo._id, {
+        strictMode,
+        ignoreLinting,
+        checkPerformance: checkPerf,
+        minConfidence: confidence,
+      });
+      toast.success('Repository rules updated successfully');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update repository rules');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -945,7 +953,7 @@ const RepositorySettings: React.FC<SettingsProps> = ({
                     { l: 'Stars', v: String(repo.meta?.stargazersCount ?? 0) },
                     {
                       l: 'Webhook',
-                      v: repo.webhookId ? 'Connected' : 'Missing',
+                      v: repo.webhookId ? 'Connected' : 'Pending Setup',
                     },
                   ].map((item) => (
                     <div key={item.l}>
@@ -1120,6 +1128,103 @@ const RepositorySettings: React.FC<SettingsProps> = ({
                     />
                   </div>
                 </motion.div>
+              </div>
+            </motion.div>
+
+            {/* CI/CD Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.22 }}
+              style={{ marginBottom: 24 }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: T.muted,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1.2px',
+                  marginBottom: 16,
+                  fontFamily: "'Inter',sans-serif",
+                }}
+              >
+                CI/CD Status Badge
+              </div>
+              <div
+                style={{
+                  background: T.panel,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 12,
+                  padding: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: T.text, fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>Live Badge Preview</span>
+                  <img
+                    src={`${API_BASE_URL}/comments/badge/${repo._id}?redirect=true`}
+                    alt="GitGuard AI Grade"
+                    style={{ height: 20, borderRadius: 3 }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = 'https://img.shields.io/badge/GitGuard_AI-no_reviews-lightgrey?style=flat-square';
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <div style={{ fontSize: 10, color: T.muted, marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>
+                    Copy Markdown for README.md:
+                  </div>
+                  <div
+                    style={{
+                      position: 'relative',
+                      background: 'rgba(0,0,0,0.3)',
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 8,
+                      padding: '10px 36px 10px 12px',
+                      fontFamily: "'Fira Code', monospace",
+                      fontSize: 11,
+                      color: T.sub,
+                      wordBreak: 'break-all',
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {`[![GitGuard AI](${API_BASE_URL}/comments/badge/${repo._id}?redirect=true)](https://github.com/${repo.repositoryFullName})`}
+                    <motion.button
+                      whileHover={{ scale: 1.1, color: T.cyan }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={async () => {
+                        const markdown = `[![GitGuard AI](${API_BASE_URL}/comments/badge/${repo._id}?redirect=true)](https://github.com/${repo.repositoryFullName})`;
+                        try {
+                          await navigator.clipboard.writeText(markdown);
+                          toast.success('📋 Markdown Copied', 'Markdown badge code copied to clipboard');
+                        } catch (err) {
+                          toast.error('❌ Copy Failed', 'Please copy it manually');
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: T.muted,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: 0,
+                      }}
+                      title="Copy to clipboard"
+                    >
+                      <Copy size={13} />
+                    </motion.button>
+                  </div>
+                </div>
               </div>
             </motion.div>
 
@@ -2201,8 +2306,9 @@ const RepositoriesPage: React.FC = () => {
   };
   const handleToggle = (r: ConnectedRepo) => toggleActive(r._id, !r.isActive);
   const handleDelete = (r: ConnectedRepo) => disconnectRepo(r._id);
-  const handleSave = (id: string, rules: Partial<RepositoryRule>) =>
-    updateRules(id, rules);
+  const handleSave = async (id: string, rules: Partial<RepositoryRule>) => {
+    await updateRules(id, rules);
+  };
 
   return (
     <div

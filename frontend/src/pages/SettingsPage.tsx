@@ -58,41 +58,6 @@ const SettingsPage: React.FC = () => {
   };
 
   const navigate = useNavigate();
-  const [emailAlerts, setEmailAlerts] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.EMAIL_ALERTS);
-      return stored !== 'false';
-    } catch {
-      return true;
-    }
-  });
-
-  const [autoReview, setAutoReview] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.AUTO_REVIEW);
-      return stored === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const handleEmailAlertsChange = (val: boolean) => {
-    setEmailAlerts(val);
-    try {
-      localStorage.setItem(STORAGE_KEYS.EMAIL_ALERTS, String(val));
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleAutoReviewChange = (val: boolean) => {
-    setAutoReview(val);
-    try {
-      localStorage.setItem(STORAGE_KEYS.AUTO_REVIEW, String(val));
-    } catch {
-      // ignore
-    }
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },

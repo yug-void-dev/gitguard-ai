@@ -8,7 +8,15 @@ Use environment variables or a secure secrets manager
 const connection = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+Use parameterized queries
+
+```
+const query = "SELECT * FROM users WHERE id = ?";
+connection.query(query, [userId], (err, results) => {
+  if (err) throw err;
+  console.log(results);
+});
+```
 });
 ```
   user: 'root',

@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Search, Github, Loader2, Lock, Globe } from 'lucide-react';
+import { Plus, Search, GitBranch, Loader2, Lock, Globe } from 'lucide-react';
 import type { Repository } from '../../types/repository.types';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
@@ -36,7 +36,7 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
   };
 
   const filtered = githubRepos.filter((r) =>
-    r.fullName.toLowerCase().includes(search.toLowerCase()),
+    r.fullName.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleConnect = async (repo: Repository) => {
@@ -71,7 +71,12 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
             <Search
               size={13}
               color="#64748b"
-              style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}
+              style={{
+                position: 'absolute',
+                left: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
             />
             <input
               autoFocus
@@ -105,11 +110,24 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
             }}
           >
             {isLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  padding: 32,
+                }}
+              >
                 <Spinner />
               </div>
             ) : filtered.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'rgba(148,163,184,0.4)', fontSize: 13, padding: 24 }}>
+              <p
+                style={{
+                  textAlign: 'center',
+                  color: 'rgba(148,163,184,0.4)',
+                  fontSize: 13,
+                  padding: 24,
+                }}
+              >
                 No repositories found
               </p>
             ) : (
@@ -127,7 +145,11 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
                     transition: 'background 0.15s',
                   }}
                 >
-                  <Github size={16} color="#818cf8" style={{ flexShrink: 0 }} />
+                  <GitBranch
+                    size={16}
+                    color="#818cf8"
+                    style={{ flexShrink: 0 }}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p
                       style={{
@@ -158,14 +180,27 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
                       </p>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexShrink: 0,
+                    }}
+                  >
                     {repo.isPrivate ? (
                       <Lock size={11} color="#94a3b8" />
                     ) : (
                       <Globe size={11} color="#94a3b8" />
                     )}
                     {repo.language && (
-                      <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: '#64748b',
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
                         {repo.language}
                       </span>
                     )}
@@ -174,9 +209,10 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
                       disabled={isConnecting || connecting !== null}
                       style={{
                         padding: '4px 12px',
-                        background: connecting === repo.id
-                          ? 'rgba(99,102,241,0.3)'
-                          : 'linear-gradient(135deg, #6366f1, #22d3ee)',
+                        background:
+                          connecting === repo.id
+                            ? 'rgba(99,102,241,0.3)'
+                            : 'linear-gradient(135deg, #6366f1, #22d3ee)',
                         border: 'none',
                         borderRadius: 8,
                         color: '#fff',
@@ -190,7 +226,13 @@ const ConnectRepoButton: React.FC<ConnectRepoButtonProps> = ({
                       }}
                     >
                       {connecting === repo.id ? (
-                        <><Loader2 size={10} style={{ animation: 'spin 0.7s linear infinite' }} /> Connecting…</>
+                        <>
+                          <Loader2
+                            size={10}
+                            style={{ animation: 'spin 0.7s linear infinite' }}
+                          />{' '}
+                          Connecting…
+                        </>
                       ) : (
                         'Connect'
                       )}

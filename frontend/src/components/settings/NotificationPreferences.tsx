@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, MessageCircle, MessageSquare } from 'lucide-react';
+import { Bell, Hash, MessageCircle } from 'lucide-react';
 import { T } from '../../constants/theme';
 import { PreferencesToggle } from './PreferencesToggle';
 import axios from 'axios';
@@ -176,7 +176,7 @@ export const NotificationPreferences: React.FC = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MessageSquare size={18} color={T.cyan} />
+              <Hash size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Slack</span>
             </div>
             <motion.button

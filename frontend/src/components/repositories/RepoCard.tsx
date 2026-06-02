@@ -6,7 +6,6 @@
 
 import React, { useState } from 'react';
 import {
-  Github,
   GitBranch,
   Star,
   Trash2,
@@ -34,7 +33,8 @@ const RepoCard: React.FC<RepoCardProps> = ({
 }) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const repoName = repo.repositoryFullName.split('/')[1] ?? repo.repositoryFullName;
+  const repoName =
+    repo.repositoryFullName.split('/')[1] ?? repo.repositoryFullName;
   const ownerName = repo.repositoryFullName.split('/')[0] ?? '';
 
   return (
@@ -67,7 +67,7 @@ const RepoCard: React.FC<RepoCardProps> = ({
             flexShrink: 0,
           }}
         >
-          <Github size={18} color="#818cf8" />
+          <GitBranch size={18} color="#818cf8" />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -102,8 +102,18 @@ const RepoCard: React.FC<RepoCardProps> = ({
             </a>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-            <Badge variant={repo.isActive ? 'success' : 'default'} dot={repo.isActive}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              marginTop: 4,
+            }}
+          >
+            <Badge
+              variant={repo.isActive ? 'success' : 'default'}
+              dot={repo.isActive}
+            >
               {repo.isActive ? 'Active' : 'Paused'}
             </Badge>
           </div>
@@ -136,12 +146,17 @@ const RepoCard: React.FC<RepoCardProps> = ({
         }}
       >
         <Tooltip content="Configure rules">
-          <button onClick={() => onConfigure(repo)} style={actionBtn('#818cf8')}>
+          <button
+            onClick={() => onConfigure(repo)}
+            style={actionBtn('#818cf8')}
+          >
             <Settings2 size={14} />
           </button>
         </Tooltip>
 
-        <Tooltip content={repo.isActive ? 'Pause monitoring' : 'Resume monitoring'}>
+        <Tooltip
+          content={repo.isActive ? 'Pause monitoring' : 'Resume monitoring'}
+        >
           <button
             onClick={() => onToggle(repo._id, !repo.isActive)}
             style={actionBtn(repo.isActive ? '#fbbf24' : '#34d399')}
@@ -153,29 +168,56 @@ const RepoCard: React.FC<RepoCardProps> = ({
         {confirmDelete ? (
           <>
             <button
-              onClick={() => { onDisconnect(repo._id); setConfirmDelete(false); }}
-              style={{ ...actionBtn('#f87171'), fontSize: 11, padding: '5px 10px' }}
+              onClick={() => {
+                onDisconnect(repo._id);
+                setConfirmDelete(false);
+              }}
+              style={{
+                ...actionBtn('#f87171'),
+                fontSize: 11,
+                padding: '5px 10px',
+              }}
             >
               Confirm
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
-              style={{ ...actionBtn('#94a3b8'), fontSize: 11, padding: '5px 10px' }}
+              style={{
+                ...actionBtn('#94a3b8'),
+                fontSize: 11,
+                padding: '5px 10px',
+              }}
             >
               Cancel
             </button>
           </>
         ) : (
           <Tooltip content="Disconnect repository">
-            <button onClick={() => setConfirmDelete(true)} style={actionBtn('#f87171')}>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={actionBtn('#f87171')}
+            >
               <Trash2 size={14} />
             </button>
           </Tooltip>
         )}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div
+          style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
           <GitBranch size={12} color="#64748b" />
-          <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+          <span
+            style={{
+              fontSize: 10,
+              color: '#64748b',
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
             webhook
           </span>
           <Star size={10} color="#64748b" />

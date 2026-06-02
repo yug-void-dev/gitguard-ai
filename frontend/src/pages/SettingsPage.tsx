@@ -6,7 +6,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LogOut, ShieldCheck, User, Mail, GitBranch } from 'lucide-react';
+import {
+  ArrowLeft,
+  LogOut,
+  ShieldCheck,
+  User,
+  Mail,
+  GitBranch,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppBackground } from '../components/layout/AppBackground';
 import { T } from '../constants/theme';
@@ -20,6 +27,7 @@ import { STORAGE_KEYS } from '../constants/config';
 const EASE = [0.22, 1, 0.36, 1] as const;
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [emailAlerts, setEmailAlerts] = useState<boolean>(() => {
     try {
@@ -57,16 +65,19 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const navigate = useNavigate();
-
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
+    visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 16, scale: 0.98 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: EASE } }
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.45, ease: EASE },
+    },
   };
 
   return (
@@ -79,7 +90,7 @@ const SettingsPage: React.FC = () => {
       }}
     >
       <AppBackground />
-      
+
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -91,7 +102,6 @@ const SettingsPage: React.FC = () => {
           margin: '0 auto',
         }}
       >
-        
         {/* Breadcrumb & Header */}
         <motion.div
           variants={itemVariants}
@@ -113,9 +123,25 @@ const SettingsPage: React.FC = () => {
                 marginBottom: 6,
               }}
             >
-              <span style={{ fontFamily: "'Fira Code',monospace", fontSize: 10, color: T.muted }}>gitguard</span>
+              <span
+                style={{
+                  fontFamily: "'Fira Code',monospace",
+                  fontSize: 10,
+                  color: T.muted,
+                }}
+              >
+                gitguard
+              </span>
               <span style={{ color: `${T.cyan}50` }}>/</span>
-              <span style={{ fontFamily: "'Fira Code',monospace", fontSize: 10, color: T.sub }}>settings</span>
+              <span
+                style={{
+                  fontFamily: "'Fira Code',monospace",
+                  fontSize: 10,
+                  color: T.sub,
+                }}
+              >
+                settings
+              </span>
             </div>
             <h1
               style={{
@@ -130,7 +156,8 @@ const SettingsPage: React.FC = () => {
               Workspace Preferences
             </h1>
             <p style={{ fontSize: 13, color: T.sub }}>
-              Manage accounts, security sentinel settings, and workspace automation
+              Manage accounts, security sentinel settings, and workspace
+              automation
             </p>
           </div>
 
@@ -161,7 +188,6 @@ const SettingsPage: React.FC = () => {
 
         {/* Dual Grid Layout */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-          
           {/* Profile Section Panel */}
           <motion.section
             variants={itemVariants}
@@ -173,7 +199,14 @@ const SettingsPage: React.FC = () => {
               boxShadow: `0 24px 60px rgba(0,0,0,0.4)`,
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 24,
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div
                   style={{
@@ -190,10 +223,23 @@ const SettingsPage: React.FC = () => {
                   <User size={15} color="#fff" />
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text, fontFamily: "'Inter',sans-serif" }}>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: T.text,
+                      fontFamily: "'Inter',sans-serif",
+                    }}
+                  >
                     Your Profile
                   </div>
-                  <div style={{ fontSize: 10, color: T.muted, fontFamily: "'Fira Code',monospace" }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: T.muted,
+                      fontFamily: "'Fira Code',monospace",
+                    }}
+                  >
                     User Session Context
                   </div>
                 </div>
@@ -224,7 +270,14 @@ const SettingsPage: React.FC = () => {
               </motion.button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
               {/* Username Info Box */}
               <div
                 style={{
@@ -234,13 +287,36 @@ const SettingsPage: React.FC = () => {
                   padding: '20px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.muted, marginBottom: 10 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: T.muted,
+                    marginBottom: 10,
+                  }}
+                >
                   <User size={14} />
-                  <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      fontWeight: 700,
+                      fontFamily: "'Inter',sans-serif",
+                    }}
+                  >
                     Username
                   </span>
                 </div>
-                <div style={{ fontFamily: "'Fira Code', monospace", fontSize: 16, fontWeight: 800, color: T.cyan }}>
+                <div
+                  style={{
+                    fontFamily: "'Fira Code', monospace",
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: T.cyan,
+                  }}
+                >
                   {user?.login || 'anonymous'}
                 </div>
               </div>
@@ -254,13 +330,37 @@ const SettingsPage: React.FC = () => {
                   padding: '20px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.muted, marginBottom: 10 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: T.muted,
+                    marginBottom: 10,
+                  }}
+                >
                   <Mail size={14} />
-                  <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      fontWeight: 700,
+                      fontFamily: "'Inter',sans-serif",
+                    }}
+                  >
                     Email
                   </span>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, wordBreak: 'break-all', fontFamily: "'Inter',sans-serif" }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: T.text,
+                    wordBreak: 'break-all',
+                    fontFamily: "'Inter',sans-serif",
+                  }}
+                >
                   {user?.email || 'N/A'}
                 </div>
               </div>
@@ -275,16 +375,52 @@ const SettingsPage: React.FC = () => {
                 padding: '20px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: T.muted, marginBottom: 14 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  color: T.muted,
+                  marginBottom: 14,
+                }}
+              >
                 <GitBranch size={16} />
-                <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Inter',sans-serif", textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: "'Inter',sans-serif",
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.8px',
+                  }}
+                >
                   GitHub Integration
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 16,
+                }}
+              >
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>Access Authentication</p>
-                  <p style={{ fontSize: 12, color: T.sub }}>Connected user profile and active API access token validation</p>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: T.text,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Access Authentication
+                  </p>
+                  <p style={{ fontSize: 12, color: T.sub }}>
+                    Connected user profile and active API access token
+                    validation
+                  </p>
                 </div>
                 <div
                   style={{
@@ -339,7 +475,14 @@ const SettingsPage: React.FC = () => {
               boxShadow: `0 24px 60px rgba(0,0,0,0.4)`,
             }}
           >
-            <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: 20 }}>
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: T.text,
+                marginBottom: 20,
+              }}
+            >
               Basic Preferences
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

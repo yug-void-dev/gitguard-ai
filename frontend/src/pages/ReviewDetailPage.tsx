@@ -185,18 +185,33 @@ const FindingCard: React.FC<FindingCardProps> = ({
     try {
       const result = await applySuggestion(commentId, findingId);
       if (result.success) {
-        toast.success('🔐 Suggestion Applied', 'Successfully committed fix to PR branch.');
+        toast.success('✅ Suggestion Applied', 'Fix committed successfully to your PR branch on GitHub.');
         onApplySuccess(findingId, result.commitSha || '');
       } else {
-        toast.error('❌ Apply Failed', result.message || 'Unknown error occurred.');
+        toast.error('Apply Failed', result.message || 'Unknown error occurred.');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message ?? err.message ?? 'Failed to apply suggestion';
-      toast.error('❌ Apply Failed', msg);
+      // Extract the backend message — covers Axios error shapes
+      const backendMsg: string =
+        err?.response?.data?.message ??
+        err?.message ??
+        'Failed to apply suggestion.';
+
+      // Detect test/fake PR scenario (422 from backend or 404 from GitHub)
+      const status = err?.response?.status;
+      if (status === 422 || status === 404 || backendMsg.toLowerCase().includes('test script') || backendMsg.toLowerCase().includes('does not exist')) {
+        toast.error(
+          '⚠️ Cannot Apply Fix',
+          'This PR was created by a manual test script and does not exist on GitHub. Apply Fix only works on real, open GitHub pull requests.'
+        );
+      } else {
+        toast.error('❌ Apply Failed', backendMsg);
+      }
     } finally {
       setApplying(false);
     }
   };
+
 
   const showApplyButton = (finding.severity === 'critical' || finding.severity === 'high') && finding.suggestion && commentId;
 
@@ -757,14 +772,52 @@ const ReviewDetailPage: React.FC = () => {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 12,
+                  gap: 16,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Code size={18} color={T.cyan} />
-                  <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>
-                    Review Diff Stream (Side-by-Side)
-                  </h2>
+                {/* Section Header */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                    paddingBottom: 14,
+                    borderBottom: `1px solid ${T.border}`,
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                      <Code size={18} color={T.cyan} />
+                      <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, margin: 0 }}>
+                        Code Change Analysis
+                      </h2>
+                    </div>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: T.muted, margin: 0, lineHeight: 1.6 }}>
+                      Side-by-side comparison of the pull request diff.{' '}
+                      <span style={{ color: 'rgba(252,165,165,0.8)', fontWeight: 600 }}>− Red lines</span> show code that was removed.{' '}
+                      <span style={{ color: 'rgba(110,231,183,0.8)', fontWeight: 600 }}>+ Green lines</span> show the new code introduced in this PR.
+                    </p>
+                  </div>
+                  <span
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 8,
+                      background: `${T.cyan}10`,
+                      border: `1px solid ${T.cyan}25`,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: T.cyan,
+                      fontFamily: "'Inter', sans-serif",
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.8px',
+                      flexShrink: 0,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    Unified Diff
+                  </span>
                 </div>
                 <SideBySideDiff diff={review.diffData} />
               </motion.section>

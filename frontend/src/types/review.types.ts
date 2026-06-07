@@ -1,4 +1,6 @@
 export interface ReviewFinding {
+  _id?: string;
+  id?: string;
   file: string;
   line: number;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info';

@@ -6,7 +6,7 @@
  * Locomotive Scroll v5 (Lenis) applied to the main content scroller.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
@@ -14,7 +14,7 @@ import { AppBackground } from '../components/layout/AppBackground';
 import { STORAGE_KEYS } from '../constants/config';
 import { useTheme } from '../hooks/useTheme';
 import { useToast } from '../context/ToastContext';
-import LocomotiveScroll from 'locomotive-scroll';
+
 
 /**
  * DashboardLayout assembles the main application chrome:
@@ -29,7 +29,7 @@ const DashboardLayout: React.FC = () => {
   const { theme } = useTheme();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const scrollContainerRef = useRef<HTMLElement>(null);
+
 
   // ── GitHub OAuth arrival toast ──────────────────────────────────────────────
   useEffect(() => {
@@ -71,32 +71,7 @@ const DashboardLayout: React.FC = () => {
     }
   }, [sidebarCollapsed]);
 
-  // ── Locomotive Scroll (Lenis) on the main content container ──
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
 
-    // Locomotive Scroll v5 wraps Lenis.
-    // We target the specific scrollable container element.
-    const locomotiveScroll = new LocomotiveScroll({
-      lenisOptions: {
-        wrapper: el,
-        content: el,
-        smoothWheel: true,
-        duration: 1.1,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        orientation: 'vertical',
-        gestureOrientation: 'vertical',
-        wheelMultiplier: 1.0,
-        touchMultiplier: 2,
-        infinite: false,
-      },
-    });
-
-    return () => {
-      locomotiveScroll.destroy();
-    };
-  }, []);
 
   const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
 
@@ -133,17 +108,14 @@ const DashboardLayout: React.FC = () => {
         {/* ── Navbar ── */}
         <Navbar onMenuClick={toggleSidebar} />
 
-        {/* ── Page content with Locomotive Scroll ── */}
+        {/* ── Page content ── */}
         <main
-          ref={scrollContainerRef}
           style={{
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',
             padding: '24px 28px',
             position: 'relative',
-            // Native smooth scroll as CSS fallback
-            scrollBehavior: 'smooth',
           }}
         >
           <Outlet />

@@ -66,8 +66,8 @@ describe('suggestionService', () => {
 
       await postInlineSuggestions({
         octokit: mockOctokit,
-        commentDoc: mockCommentDoc,
-        findings,
+        commentDoc: mockCommentDoc as any,
+        findings: findings as any,
         prNumber: 42,
       });
 

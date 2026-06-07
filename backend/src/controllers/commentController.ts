@@ -122,10 +122,41 @@ export const applyCommentSuggestion = async (
     });
 
     res.status(200).json(result);
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error, commentId }, 'Failed to apply suggestion');
-    const err = error as { message?: string };
-    res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+
+    const ghStatus = error?.status ?? error?.response?.status;
+    if (ghStatus === 404) {
+      if (error?.message?.includes('Pull Request')) {
+        res.status(422).json({
+          success: false,
+          message: error.message,
+        });
+      } else {
+        res.status(422).json({
+          success: false,
+          message:
+            'The target file was not found on GitHub in this PR branch. ' +
+            'Please verify that the file exists on GitHub and has not been deleted or renamed.',
+        });
+      }
+      return;
+    }
+
+    // ── DB record not found ──
+    if (
+      error?.message?.includes('not found') ||
+      error?.message?.includes('record not found')
+    ) {
+      res.status(404).json({ success: false, message: error.message });
+      return;
+    }
+
+    // ── Generic error ──
+    res.status(500).json({
+      success: false,
+      message: error?.message || 'Internal server error while applying suggestion.',
+    });
   }
 };
 

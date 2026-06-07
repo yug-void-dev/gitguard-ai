@@ -14,35 +14,38 @@ async function main() {
   console.log('🚀 Connecting to DB...');
   await connectDatabase();
 
+  const prNumber = process.env.PR_NUMBER
+    ? parseInt(process.env.PR_NUMBER, 10)
+    : Math.floor(Math.random() * 10000) + 200;
+
+  const repositoryFullName = process.env.REPO_FULL_NAME || 'yug-void-dev/gitguard-ai';
+  const [ownerLogin, repoName] = repositoryFullName.split('/');
+
   const eventId = `test-event-${uuidv4().slice(0, 8)}`;
 
   // This is a sample payload similar to what the GitHub webhook would produce
   const payload: ReviewJobPayload = {
     eventId,
-    repositoryFullName: 'yug-void-dev/gitguard-ai',
-    ownerLogin: 'yug-void-dev',
-    repoName: 'gitguard-ai',
-    prNumber: 123,
-    headSha: 'test-sha-12345',
-    diffUrl: 'https://github.com/yug-void-dev/gitguard-ai/pull/123.diff',
-    rawDiff: `diff --git a/src/db.ts b/src/db.ts
+    repositoryFullName,
+    ownerLogin,
+    repoName,
+    prNumber,
+    headSha: `test-sha-${uuidv4().slice(0, 8)}`,
+    diffUrl: `https://github.com/${repositoryFullName}/pull/${prNumber}.diff`,
+    rawDiff: `diff --git a/test.js b/test.js
 index 1234567..89abcdef 100644
---- a/src/db.ts
-+++ b/src/db.ts
-@@ -10,5 +10,10 @@ export async function getUser(id: string) {
--  return db.query('SELECT * FROM users WHERE id = $1', [id]);
+--- a/test.js
++++ b/test.js
+@@ -10,5 +10,10 @@ export async function getUser(id) {
+-  return db.query('SELECT * FROM users WHERE id = ' + id);
 +  // DANGEROUS: SQL Injection vulnerability for testing
 +  return db.query(\`SELECT * FROM users WHERE id = '\${id}'\`);
-+}
-+
-+export function processData(data: any) {
-+  // BUG: Potential null pointer
-+  return data.name.toUpperCase();
 +}`,
+
     enqueuedAt: new Date().toISOString(),
     context: {
-      prNumber: 123,
-      title: 'feat: add dangerous sql query',
+      prNumber,
+      title: `feat: add dangerous sql query (Test PR #${prNumber})`,
       description: 'This is a test PR with a security vulnerability.',
       linkedIssues: [],
       headBranch: 'feat/test',
@@ -52,12 +55,12 @@ index 1234567..89abcdef 100644
       additions: 10,
       deletions: 2,
       isDraft: false,
-      repositoryFullName: 'yug-void-dev/gitguard-ai',
-      authorLogin: 'test-user'
-    }
+      repositoryFullName,
+      authorLogin: 'test-user',
+    },
   };
 
-  console.log(`📦 Enqueueing job for Event ID: ${eventId}`);
+  console.log(`📦 Enqueueing job for Event ID: ${eventId} and PR #${prNumber}`);
   await enqueueReviewJob(payload, eventId);
 
   console.log('✅ Job added to queue! The worker should pick it up automatically.');
@@ -71,7 +74,7 @@ index 1234567..89abcdef 100644
   }, 2000);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('❌ Error:', err);
   process.exit(1);
 });

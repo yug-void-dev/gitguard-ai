@@ -141,12 +141,28 @@ export async function applySuggestion(params: {
   const owner = comment.repository.owner;
   const repo = comment.repository.name;
 
-  // 3. Fetch PR to get the head branch
-  const { data: pr } = await octokit.rest.pulls.get({
-    owner,
-    repo,
-    pull_number: comment.prNumber,
-  });
+  // 3. Fetch PR to get the head branch — validate it actually exists on GitHub
+  let pr: Awaited<ReturnType<typeof octokit.rest.pulls.get>>['data'];
+  try {
+    const { data } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: comment.prNumber,
+    });
+    pr = data;
+  } catch (ghError: any) {
+    const status = ghError?.status ?? ghError?.response?.status;
+    if (status === 404) {
+      throw Object.assign(
+        new Error(
+          `Pull Request #${comment.prNumber} was not found on GitHub (${owner}/${repo}). ` +
+          'This PR was likely created by a manual test script. Apply Fix only works on real, open GitHub pull requests.'
+        ),
+        { status: 404 }
+      );
+    }
+    throw ghError; // re-throw any other GitHub error
+  }
 
   const branch = pr.head.ref;
 

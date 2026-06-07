@@ -192,7 +192,7 @@ export async function applySuggestion(params: {
     appliedAt: new Date(),
     appliedBy: new mongoose.Types.ObjectId(userId),
     autoApplied: false,
-    commitHash: commitResponse.data.commit.sha,
+    commitHash: commitResponse.data.commit.sha as string,
     status: 'applied' as const,
   };
 
@@ -203,6 +203,6 @@ export async function applySuggestion(params: {
 
   return {
     success: true,
-    commitSha: commitResponse.data.commit.sha,
+    commitSha: commitResponse.data.commit.sha as string,
   };
 }

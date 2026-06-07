@@ -234,8 +234,8 @@ export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec):
 /**
  * Scans raw pull request diff for custom forbidden patterns, generating findings.
  */
-export function scanDiffForCustomPatterns(rawDiff: string, spec: IRepositoryRuleSpec): any[] {
-  const findings: any[] = [];
+export function scanDiffForCustomPatterns(rawDiff: string, spec: IRepositoryRuleSpec): IFinding[] {
+  const findings: IFinding[] = [];
   const customPatterns = spec.customPatterns ?? [];
   const flagPatterns = customPatterns.filter((p) => p.action === 'flag');
 

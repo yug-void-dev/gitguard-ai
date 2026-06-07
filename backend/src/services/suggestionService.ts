@@ -5,8 +5,8 @@
 
 import { Octokit } from '@octokit/rest';
 import mongoose from 'mongoose';
-import { GitHubComment } from '../models/GitHubComment';
-import { Review } from '../models/Review';
+import { GitHubComment, IGitHubComment, IInlineComment } from '../models/GitHubComment';
+import { Review, IFinding } from '../models/Review';
 import { formatInlineComment } from '../utils/diffFormatter';
 import { logger } from '../lib/logger';
 
@@ -29,8 +29,8 @@ function replaceLine(originalContent: string, lineNumber: number, suggestion: st
  */
 export async function postInlineSuggestions(params: {
   octokit: Octokit;
-  commentDoc: any; // Mongoose IGitHubComment document
-  findings: any[];
+  commentDoc: IGitHubComment; // Mongoose IGitHubComment document
+  findings: IFinding[];
   prNumber: number;
 }): Promise<void> {
   const { octokit, commentDoc, findings, prNumber } = params;
@@ -55,7 +55,7 @@ export async function postInlineSuggestions(params: {
 
     log.info({ count: targetFindings.length }, 'Posting inline suggestions to GitHub');
 
-    const inlineComments: any[] = [];
+    const inlineComments: IInlineComment[] = [];
 
     for (const finding of targetFindings) {
       try {
@@ -86,7 +86,7 @@ export async function postInlineSuggestions(params: {
         });
 
         log.debug({ file: finding.file, line: finding.line, id: response.data.id }, 'Inline suggestion posted');
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Log warning and proceed with next comments
         log.warn({ err, file: finding.file, line: finding.line }, 'Failed to post individual inline suggestion');
       }
@@ -110,7 +110,7 @@ export async function applySuggestion(params: {
   commentId: string;
   findingId: string;
   userId: string;
-}): Promise<any> {
+}): Promise<{ success: boolean; commitSha: string }> {
   const { octokit, commentId, findingId, userId } = params;
   const log = logger.child({ module: 'suggestionService.applySuggestion', commentId, findingId });
 
@@ -128,7 +128,7 @@ export async function applySuggestion(params: {
 
   // Find the matching finding in the review
   const targetFinding = review.findings.find(
-    (f: any) => f._id?.toString() === findingId || f.id === findingId,
+    (f: IFinding) => f._id?.toString() === findingId || f.id === findingId,
   );
 
   if (!targetFinding) {
@@ -190,7 +190,7 @@ export async function applySuggestion(params: {
     originalSuggestion: suggestionCode,
     appliedCode: suggestionCode,
     appliedAt: new Date(),
-    appliedBy: new mongoose.Types.ObjectId(userId) as any,
+    appliedBy: new mongoose.Types.ObjectId(userId),
     autoApplied: false,
     commitHash: commitResponse.data.commit.sha,
     status: 'applied' as const,

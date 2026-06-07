@@ -121,7 +121,7 @@ export const applyCommentSuggestion = async (
       userId,
     });
 
-    res.status(200).json({ success: true, ...result });
+    res.status(200).json(result);
   } catch (error) {
     logger.error({ error, commentId }, 'Failed to apply suggestion');
     const err = error as { message?: string };

@@ -50,6 +50,16 @@ interface FileDiff {
 
 // ─── Diff Parser ─────────────────────────────────────────────────────────────
 
+/**
+ * Parses a standard unified git diff string into a structured `FileDiff` array.
+ * 
+ * This algorithm splits the diff into files, extracting additions, deletions, 
+ * and unchanged context lines. It aligns additions and deletions side-by-side 
+ * into `DiffRow` objects, adding `isHunk` separators for visual clarity.
+ * 
+ * @param diffStr - The raw unified diff string from git or GitHub.
+ * @returns An array of parsed files, containing metadata and aligned rows.
+ */
 function parseUnifiedDiff(diffStr: string): FileDiff[] {
   if (!diffStr) return [];
 

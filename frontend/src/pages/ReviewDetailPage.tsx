@@ -26,6 +26,7 @@ import { AppBackground } from '../components/layout/AppBackground';
 import { T } from '../constants/theme';
 import { useToast } from '../context/ToastContext';
 import { SideBySideDiff } from '../components/reviews/SideBySideDiff';
+import { GlobalErrorBoundary } from '../components/common/GlobalErrorBoundary';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -819,7 +820,9 @@ const ReviewDetailPage: React.FC = () => {
                     Unified Diff
                   </span>
                 </div>
-                <SideBySideDiff diff={review.diffData} />
+                <GlobalErrorBoundary fallbackMessage="Failed to load side-by-side diff viewer.">
+                  <SideBySideDiff diff={review.diffData} />
+                </GlobalErrorBoundary>
               </motion.section>
             ) : null}
 

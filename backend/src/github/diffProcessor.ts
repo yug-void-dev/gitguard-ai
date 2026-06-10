@@ -8,6 +8,7 @@
 
 import { PRContext } from '../types/analysis';
 import { logger } from '../lib/logger';
+import { DIFF_PROCESSING } from '../config/constants';
 
 export interface ProcessedFile {
   filename: string;
@@ -36,7 +37,7 @@ export interface ProcessedDiff {
   totalDeletions: number;
 }
 
-const MAX_CHUNK_CHARS = 12_000;
+const MAX_CHUNK_CHARS = DIFF_PROCESSING.MAX_CHUNK_CHARS;
 
 const LANG_MAP: Record<string, string> = {
   ts: 'TypeScript', tsx: 'TypeScript', js: 'JavaScript', jsx: 'JavaScript',

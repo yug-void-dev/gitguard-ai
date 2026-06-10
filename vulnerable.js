@@ -36,7 +36,11 @@ Remove the duplicate route definition. Ensure all routes have proper error handl
  * Flags: 
  *   1. NoSQL Injection — passing req.body query object directly allows authentication bypass (CWE-943).
  *   2. Sensitive Info Disclosure — sending raw database error stack trace back to the client (CWE-209).
- */
+    const { username, password } = req.body;
+    if (typeof username !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid username format' });
+    }
+    const user = await User.findOne({ username: username });
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;

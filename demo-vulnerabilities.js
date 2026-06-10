@@ -43,7 +43,8 @@ const fs = require('fs');
 const path = require('path');
 
 // ❌ VULNERABILITY 1: Hardcoded credentials (CWE-798)
-const DB_CONFIG = {
+const childProcess = require('child_process');
+const ping = childProcess.spawn('ping', ['-c', '4', hostname]);
   host: 'localhost',
   user: 'root',
   password: 'Admin@123456',         // hardcoded password

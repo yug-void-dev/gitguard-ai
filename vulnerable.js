@@ -38,7 +38,11 @@ Remove this orphaned code block. If a separate `/users` route is intended, ensur
  *   2. Sensitive Info Disclosure — sending raw database error stack trace back to the client (CWE-209).
     const { username, password } = req.body;
     if (typeof username !== 'string') {
+    const { username, password } = req.body;
+    if (typeof username !== 'string') {
       return res.status(400).json({ success: false, message: 'Invalid username format' });
+    }
+    const user = await User.findOne({ username: String(username) });
     }
     const user = await User.findOne({ username: username });
 router.post('/login', async (req, res) => {

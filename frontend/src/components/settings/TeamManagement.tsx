@@ -232,13 +232,13 @@ export const TeamManagement: React.FC = () => {
         <div style={{ color: T.textSecondary, textAlign: 'center', padding: '20px' }}>
           Loading team members...
         </div>
-      ) : members.length === 0 ? (
+      ) : (!members || members.length === 0) ? (
         <div style={{ color: T.textSecondary, textAlign: 'center', padding: '20px' }}>
           No team members yet
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {members.map((member) => (
+          {(members || []).map((member) => (
             <motion.div
               key={member.id}
               layout

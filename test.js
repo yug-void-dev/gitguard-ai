@@ -8,7 +8,7 @@
   // Line 8
   // Line 9
   return db.query('SELECT * FROM users WHERE id = ' + id);
-Use parameterized queries to prevent SQL injection
+return db.query('SELECT * FROM users WHERE id = $1', [id]);
 
 ```
 return db.query('SELECT * FROM users WHERE id = $1', [id]);

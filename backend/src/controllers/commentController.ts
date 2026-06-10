@@ -92,6 +92,7 @@ export const listRepositoryComments = async (
 export const applyCommentSuggestion = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
   const { commentId } = req.params;
   try {
@@ -153,10 +154,7 @@ export const applyCommentSuggestion = async (
     }
 
     // ── Generic error ──
-    res.status(500).json({
-      success: false,
-      message: error?.message || 'Internal server error while applying suggestion.',
-    });
+    next(error);
   }
 };
 

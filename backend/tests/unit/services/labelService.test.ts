@@ -123,5 +123,13 @@ describe('applyPRLabels', () => {
         applyPRLabels('token', 'owner', 'repo', 1, findings, 'evt-8'),
       ).resolves.not.toThrow();
     });
+
+    it('should survive if addLabels throws due to rate limit', async () => {
+      mockAddLabels.mockRejectedValue(Object.assign(new Error('Rate Limit Exceeded'), { status: 403 }));
+      const result = await applyPRLabels('token', 'owner', 'repo', 1, [], 'evt-10');
+      // Should return the labels it tried to apply, even if GitHub failed
+      expect(result.labelsApplied).toContain('ai-reviewed');
+    });
+  });
   });
 });

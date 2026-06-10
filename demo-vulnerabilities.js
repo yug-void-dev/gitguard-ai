@@ -31,7 +31,13 @@ const DB_CONFIG = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-};
+const query = 'SELECT * FROM users WHERE username = ?';
+return new Promise((resolve, reject) => {
+  connection.query(query, [username], (err, results) => {
+    if (err) reject(err);
+    resolve(results);
+  });
+});
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');

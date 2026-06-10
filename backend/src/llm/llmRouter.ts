@@ -17,8 +17,9 @@ import { parseReviewResponse, mergeChunkFindings, ParsedReview, DiffChunk } from
 import { AnalysisFinding } from '../types/analysis';
 import { PRContext } from '../types/analysis';
 import { LlmProvider, LlmCallOptions } from './types';
+import { LLM_ROUTING } from '../config/constants';
 
-const GROQ_CHAR_THRESHOLD = 50_000;
+const GROQ_CHAR_THRESHOLD = LLM_ROUTING.GROQ_CHAR_THRESHOLD;
 
 type ProviderFn = (s: string, u: string, o?: LlmCallOptions) => Promise<{ text: string; promptTokens?: number; completionTokens?: number }>;
 

@@ -49,7 +49,10 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // VULNERABLE: Direct object passing allows NoSQL injection (e.g., passing { "$ne": null })
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred'
+    });
     const user = await User.findOne({ username: username });
 
     if (!user) {

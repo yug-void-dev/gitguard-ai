@@ -50,6 +50,17 @@ export interface RouterOutput {
   latencyMs: number;
 }
 
+/**
+ * Routes chunked pull request diffs to the appropriate LLM provider.
+ * 
+ * Implements a smart routing strategy based on diff payload size:
+ * - Extremely large diffs bypass Groq due to rate limits and context windows.
+ * - Standard diffs prefer Groq for speed but fallback to Gemini natively.
+ * 
+ * @param input - The structured router input containing chunks, PR context, and telemetry ID.
+ * @returns A unified summary containing consolidated findings, token metrics, and performance latency.
+ * @throws If all available fallback providers fail to process the diff successfully.
+ */
 export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
   const { chunks, context, eventId } = input;
   const log = logger.child({ module: 'llmRouter', eventId });

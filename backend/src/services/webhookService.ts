@@ -113,6 +113,11 @@ export async function processWebhookEvent(
   });
 
   // ── Enqueue review job ────────────────────────────────────────────────
+  /**
+   * Constructs the serialized ReviewJobPayload and dispatches it to the BullMQ queue.
+   * This decoupled architecture allows webhook ingestion to return 200 OK immediately
+   * while the heavy LLM analysis runs asynchronously in background workers.
+   */
   const payload: ReviewJobPayload = {
     eventId: event.eventId,
     repositoryFullName: event.repository.fullName,

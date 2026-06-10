@@ -15,6 +15,17 @@ const User = mongoose.model('User', UserSchema);
  * Flags: Retrieves all users from the DB at once without limits.
  */
 router.get('/users', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+    const allUsers = await User.find({}).skip(skip).limit(limit);
+    res.status(200).json(allUsers);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ success: false, message: 'Internal server error occurred' });
+  }
+});
   // Missing try-catch block can crash Express server on database disconnection
   const allUsers = await User.find({}); // Performance issue & potential crash
   res.status(200).json(allUsers);

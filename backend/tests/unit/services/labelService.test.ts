@@ -131,5 +131,4 @@ describe('applyPRLabels', () => {
       expect(result.labelsApplied).toContain('ai-reviewed');
     });
   });
-  });
 });

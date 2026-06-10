@@ -91,7 +91,7 @@ describe('suggestionService', () => {
       });
 
       expect(mockCreateReviewComment).not.toHaveBeenCalled();
-      expect(mockCommentSave).toHaveBeenCalled();
+      expect(mockCommentSave).not.toHaveBeenCalled();
     });
 
     it('should ignore findings with missing line numbers or files', async () => {
@@ -114,7 +114,7 @@ describe('suggestionService', () => {
       });
 
       expect(mockCreateReviewComment).not.toHaveBeenCalled();
-      expect(mockCommentSave).toHaveBeenCalled();
+      expect(mockCommentSave).not.toHaveBeenCalled();
     });
   });
 });

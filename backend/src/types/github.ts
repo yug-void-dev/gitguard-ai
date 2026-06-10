@@ -100,6 +100,7 @@ export interface GitHubWebhookPayload {
     login: string;
     id: number;
   };
+  rawDiff?: string;
 }
 
 // ─── Internal Event Types ─────────────────────────────────────────────────────
@@ -114,6 +115,9 @@ export interface PullRequestEvent {
 
   /** The specific action that triggered the event */
   action: PullRequestAction;
+
+  /** Raw diff string, optionally provided directly to bypass large PR fetching errors */
+  rawDiff?: string;
 
   /** Pull request metadata */
   pullRequest: {

@@ -15,7 +15,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { RepositoryManager } from '../components/settings/RepositoryManager';
+
 import { GlobalErrorBoundary } from '../components/common/GlobalErrorBoundary';
 import { AppBackground } from '../components/layout/AppBackground';
 import { T } from '../constants/theme';

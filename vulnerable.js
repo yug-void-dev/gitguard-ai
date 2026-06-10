@@ -1,78 +1,44 @@
 const express = require('express');
-const router = express.Router();
 const mongoose = require('mongoose');
+const app = express();
+app.use(express.json());
 
-// A mock Mongoose user schema
-const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true },
-  email: { type: String, required: true },
-  passwordHash: { type: String, required: true },
-});
-const User = mongoose.model('User', UserSchema);
-
-/**
- * 🐢 PERFORMANCE ISSUE: No limits or pagination on query
- * Flags: Retrieves all users from the DB at once without limits.
- */
-router.get('/users', async (req, res) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-    const allUsers = await User.find({}).skip(skip).limit(limit);
-    res.status(200).json(allUsers);
-  } catch (error) {
-Remove this orphaned code block. If a separate `/users` route is intended, ensure it is properly defined, has robust error handling, and implements pagination.
-    res.status(500).json({ success: false, message: 'Internal server error occurred' });
-  }
-});
-  // Missing try-catch block can crash Express server on database disconnection
-  const allUsers = await User.find({}); // Performance issue & potential crash
-  res.status(200).json(allUsers);
+// VULNERABILITY 1: NoSQL Injection — user input passed directly to MongoDB query
+app.get('/users', async (req, res) => {
+  const { username, password } = req.query;
+  // Attacker can pass: ?username[$ne]=null&password[$ne]=null to bypass auth
+  const user = await mongoose.connection.db
+    .collection('users')
+    .findOne({ username: username, password: password });
+  res.json(user);
 });
 
-/**
- * 🚨 SECURITY: NoSQL Injection & Information Disclosure
- * Flags: 
- *   1. NoSQL Injection — passing req.body query object directly allows authentication bypass (CWE-943).
- *   2. Sensitive Info Disclosure — sending raw database error stack trace back to the client (CWE-209).
-    const { username, password } = req.body;
-    if (typeof username !== 'string') {
-    const { username, password } = req.body;
-    if (typeof username !== 'string') {
-      return res.status(400).json({ success: false, message: 'Invalid username format' });
-    }
-    const user = await User.findOne({ username: String(username) });
-    }
-    const user = await User.findOne({ username: username });
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error occurred'
-    });
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    console.error('Error during login:', error); // Log full error on server
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error occurred'
-    });
-
-    res.status(200).json({ success: true, user });
-  } catch (error) {
-    // VULNERABLE: Exposing raw database error object containing system information
-    res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error occurred', 
-      error: error.message, // Exposes database internals
-      stack: error.stack    // Highly critical information leakage!
-    });
-  }
+// VULNERABILITY 2: Mass Assignment — all fields from req.body saved without sanitization
+app.put('/users/:id', async (req, res) => {
+  const updated = await mongoose.connection.db
+    .collection('users')
+    .updateOne({ _id: req.params.id }, { $set: req.body });
+  res.json(updated);
 });
 
-module.exports = router;
+// VULNERABILITY 3: Hardcoded credentials
+const MONGO_URI = 'mongodb+srv://admin:SuperSecret123@prod-cluster.mongodb.net/mydb';
+mongoose.connect(MONGO_URI);
+
+// VULNERABILITY 4: Sensitive data exposed — no field projection
+app.get('/profile/:id', async (req, res) => {
+  const user = await mongoose.connection.db
+    .collection('users')
+    .findOne({ _id: req.params.id }); // returns passwords, tokens, everything!
+  res.json(user);
+});
+
+// VULNERABILITY 5: No rate limiting or auth on delete
+app.delete('/users/:id', async (req, res) => {
+  await mongoose.connection.db
+    .collection('users')
+    .deleteMany({ _id: req.params.id });
+  res.json({ deleted: true });
+});
+
+app.listen(3000);

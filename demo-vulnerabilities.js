@@ -11,7 +11,16 @@
  * 6. Path traversal
  */
 
-const mysql = require('mysql');
+Use environment variables or a secure secrets management system
+
+```
+const DB_CONFIG = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+};
+```
 const jwt = require('jsonwebtoken');
 const { exec } = require('child_process');
 const fs = require('fs');

@@ -50,7 +50,11 @@ router.post('/login', async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    console.error('Error during login:', error); // Log full error on server
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred'
+    });
 
     res.status(200).json({ success: true, user });
   } catch (error) {

@@ -48,6 +48,7 @@ import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
 import axios from 'axios';
 import pino from 'pino';
 import { applyPRLabels } from '../services/labelService';
+import { DIFF_PROCESSING, QUEUE_CONFIG } from '../config/constants';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -325,7 +326,7 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
               ).length,
               codeQualityScore: enhancedMetrics.codeQualityScore,
             },
-            diffData: rawDiff.slice(0, 50_000), // cap stored diff size
+            diffData: rawDiff.slice(0, DIFF_PROCESSING.MAX_STORED_DIFF_CHARS), // cap stored diff size
           },
         },
         { upsert: true, new: true },
@@ -421,7 +422,7 @@ async function fetchDiff(
   log.debug({ diffUrl }, 'Fetching PR diff');
 
   const response = await axios.get<string>(diffUrl, {
-    timeout: 15_000,
+    timeout: QUEUE_CONFIG.AXIOS_TIMEOUT_MS,
     headers: { Accept: 'application/vnd.github.v3.diff, text/plain, */*' },
   });
 

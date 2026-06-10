@@ -121,6 +121,7 @@ export async function processWebhookEvent(
     prNumber: event.pullRequest.number,
     headSha: event.pullRequest.headSha,
     diffUrl: event.pullRequest.diffUrl,
+    rawDiff: event.rawDiff,
     context,
     enqueuedAt: new Date().toISOString(),
   };

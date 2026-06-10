@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Shield, Plus, Trash2, Copy } from 'lucide-react';
 import { T } from '../../constants/theme';
 import { PreferencesToggle } from './PreferencesToggle';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface SecurityConfig {
   twoFactorEnabled: boolean;
@@ -38,7 +38,7 @@ export const SecuritySettings: React.FC = () => {
   const fetchSecuritySettings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/security/settings');
+      const response = await api.get('/api/security/settings');
       setConfig(response.data);
     } catch (err) {
       console.error('Failed to load security settings', err);
@@ -50,7 +50,7 @@ export const SecuritySettings: React.FC = () => {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      await axios.put('/api/security/settings', config);
+      await api.put('/api/security/settings', config);
     } catch (err) {
       console.error('Failed to save settings', err);
     } finally {
@@ -78,7 +78,7 @@ export const SecuritySettings: React.FC = () => {
 
   const handleEnableTwoFactor = async () => {
     try {
-      const response = await axios.post('/api/security/2fa/setup');
+      const response = await api.post('/api/security/2fa/setup');
       setTwoFactorCode(response.data.qrCode);
       setShowTwoFactorSetup(true);
     } catch (err) {

@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Trash2, Shield, Eye, MessageSquare } from 'lucide-react';
 import { T } from '../../constants/theme';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface TeamMember {
   id: string;
@@ -32,8 +32,8 @@ export const TeamManagement: React.FC = () => {
   const fetchTeamMembers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/team');
-      setMembers(response.data.members);
+      const response = await api.get('/api/team');
+      setMembers(response.data?.members || []);
       setError(null);
     } catch (err) {
       setError('Failed to load team members');
@@ -47,7 +47,7 @@ export const TeamManagement: React.FC = () => {
     if (!newMemberEmail.trim()) return;
 
     try {
-      await axios.post('/api/team/members', {
+      await api.post('/api/team/members', {
         email: newMemberEmail,
         role: newMemberRole,
       });
@@ -64,7 +64,7 @@ export const TeamManagement: React.FC = () => {
     if (!confirm('Remove this team member?')) return;
 
     try {
-      await axios.delete(`/api/team/members/${memberId}`);
+      await api.delete(`/api/team/members/${memberId}`);
       fetchTeamMembers();
     } catch (err) {
       setError('Failed to remove team member');
@@ -74,7 +74,7 @@ export const TeamManagement: React.FC = () => {
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
-      await axios.patch(`/api/team/members/${memberId}`, { role: newRole });
+      await api.patch(`/api/team/members/${memberId}`, { role: newRole });
       fetchTeamMembers();
     } catch (err) {
       setError('Failed to update role');

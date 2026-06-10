@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Key, Plus, Copy, Trash2, Eye, EyeOff } from 'lucide-react';
 import { T } from '../../constants/theme';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface ApiKey {
   id: string;
@@ -32,8 +32,8 @@ export const ApiKeyManager: React.FC = () => {
   const fetchApiKeys = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/api-keys');
-      setApiKeys(response.data.keys);
+      const response = await api.get('/api/api-keys');
+      setApiKeys(response.data?.keys || []);
     } catch (err) {
       console.error('Failed to load API keys', err);
     } finally {
@@ -45,7 +45,7 @@ export const ApiKeyManager: React.FC = () => {
     if (!newKeyName.trim()) return;
 
     try {
-      const response = await axios.post('/api/api-keys', { name: newKeyName });
+      const response = await api.post('/api/api-keys', { name: newKeyName });
       setCreatedKey(response.data.key);
       setNewKeyName('');
       fetchApiKeys();
@@ -58,7 +58,7 @@ export const ApiKeyManager: React.FC = () => {
     if (!confirm('Delete this API key? This action cannot be undone.')) return;
 
     try {
-      await axios.delete(`/api/api-keys/${keyId}`);
+      await api.delete(`/api/api-keys/${keyId}`);
       fetchApiKeys();
     } catch (err) {
       console.error('Failed to delete API key', err);

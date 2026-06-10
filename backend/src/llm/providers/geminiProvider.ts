@@ -24,7 +24,7 @@ export async function callGemini(
   if (!env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
 
   const model = getClient().getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     generationConfig: {
       maxOutputTokens: options.maxTokens ?? env.LLM_MAX_TOKENS,
@@ -33,7 +33,7 @@ export async function callGemini(
     },
   });
 
-  logger.debug({ model: 'gemini-1.5-flash', promptChars: userPrompt.length }, 'Calling Gemini');
+  logger.debug({ model: 'gemini-2.5-flash', promptChars: userPrompt.length }, 'Calling Gemini');
   const result = await model.generateContent(userPrompt);
   const response = result.response;
   const usage = response.usageMetadata;

@@ -422,7 +422,7 @@ async function fetchDiff(
 
   const response = await axios.get<string>(diffUrl, {
     timeout: 15_000,
-    headers: { Accept: 'application/vnd.github.v3.diff' },
+    headers: { Accept: 'application/vnd.github.v3.diff, text/plain, */*' },
   });
 
   if (typeof response.data !== 'string') {

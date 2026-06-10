@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Hash, MessageCircle } from 'lucide-react';
 import { T } from '../../constants/theme';
 import { PreferencesToggle } from './PreferencesToggle';
-import axios from 'axios';
+import api from '../../services/api';
 
 interface NotificationSettings {
   emailEnabled: boolean;
@@ -47,7 +47,7 @@ export const NotificationPreferences: React.FC = () => {
   const fetchNotificationSettings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/notifications/settings');
+      const response = await api.get('/api/notifications/settings');
       setSettings(response.data);
       setSlackWebhookInput(response.data.slackWebhook || '');
       setDiscordWebhookInput(response.data.discordWebhook || '');
@@ -61,7 +61,7 @@ export const NotificationPreferences: React.FC = () => {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      await axios.put('/api/notifications/settings', {
+      await api.put('/api/notifications/settings', {
         ...settings,
         slackWebhook: slackWebhookInput,
         discordWebhook: discordWebhookInput,

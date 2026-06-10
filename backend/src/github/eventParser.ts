@@ -74,6 +74,7 @@ const githubPullRequestSchema = z.object({
 const webhookPayloadSchema = z.object({
   action: z.string(),
   number: z.number(),
+  rawDiff: z.string().optional(),
   pull_request: githubPullRequestSchema,
   repository: githubRepoSchema,
   sender: githubUserSchema,
@@ -119,6 +120,7 @@ export function parsePullRequestEvent(
   const event: PullRequestEvent = {
     eventId: uuidv4(),
     action: payload.action as PullRequestAction,
+    rawDiff: payload.rawDiff,
 
     pullRequest: {
       id: pr.id,

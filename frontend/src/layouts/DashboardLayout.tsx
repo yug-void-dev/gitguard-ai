@@ -14,6 +14,7 @@ import { AppBackground } from '../components/layout/AppBackground';
 import { STORAGE_KEYS } from '../constants/config';
 import { useTheme } from '../hooks/useTheme';
 import { useToast } from '../context/ToastContext';
+import { GlobalErrorBoundary } from '../components/common/GlobalErrorBoundary';
 
 
 /**
@@ -118,7 +119,9 @@ const DashboardLayout: React.FC = () => {
             position: 'relative',
           }}
         >
-          <Outlet />
+          <GlobalErrorBoundary fallbackMessage="Failed to load dashboard content.">
+            <Outlet />
+          </GlobalErrorBoundary>
         </main>
       </div>
     </div>

@@ -48,9 +48,9 @@ export async function postInlineSuggestions(params: {
     });
     const commitSha = pr.head.sha;
 
-    // 2. Filter critical and high findings that have a suggestion
+    // 2. Filter critical and high findings that have a suggestion, line, and file
     const targetFindings = findings.filter(
-      (f) => (f.severity === 'critical' || f.severity === 'high') && f.suggestion,
+      (f) => (f.severity === 'critical' || f.severity === 'high') && f.suggestion && f.file && f.line,
     );
 
     log.info({ count: targetFindings.length }, 'Posting inline suggestions to GitHub');

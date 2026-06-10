@@ -75,5 +75,46 @@ describe('suggestionService', () => {
       expect(mockCreateReviewComment).toHaveBeenCalledTimes(2);
       expect(mockCommentSave).toHaveBeenCalled();
     });
+
+    it('should handle completely empty findings array gracefully', async () => {
+      const mockOctokit = new Octokit();
+      const mockCommentDoc = {
+        repository: { owner: 'owner', name: 'repo' },
+        save: mockCommentSave,
+      };
+
+      await postInlineSuggestions({
+        octokit: mockOctokit,
+        commentDoc: mockCommentDoc as any,
+        findings: [],
+        prNumber: 42,
+      });
+
+      expect(mockCreateReviewComment).not.toHaveBeenCalled();
+      expect(mockCommentSave).toHaveBeenCalled();
+    });
+
+    it('should ignore findings with missing line numbers or files', async () => {
+      const mockOctokit = new Octokit();
+      const mockCommentDoc = {
+        repository: { owner: 'owner', name: 'repo' },
+        save: mockCommentSave,
+      };
+
+      const findings = [
+        { severity: 'critical', suggestion: 'fix 1', message: 'msg1' }, // Missing line and file
+        { file: 'src/app.ts', severity: 'high', suggestion: 'fix 2', message: 'msg2' }, // Missing line
+      ];
+
+      await postInlineSuggestions({
+        octokit: mockOctokit,
+        commentDoc: mockCommentDoc as any,
+        findings: findings as any,
+        prNumber: 42,
+      });
+
+      expect(mockCreateReviewComment).not.toHaveBeenCalled();
+      expect(mockCommentSave).toHaveBeenCalled();
+    });
   });
 });

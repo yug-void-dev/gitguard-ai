@@ -22,7 +22,7 @@ router.get('/users', async (req, res) => {
     const allUsers = await User.find({}).skip(skip).limit(limit);
     res.status(200).json(allUsers);
   } catch (error) {
-    console.error('Error fetching users:', error);
+Remove the duplicate route definition. Ensure all routes have proper error handling and pagination where appropriate.
     res.status(500).json({ success: false, message: 'Internal server error occurred' });
   }
 });

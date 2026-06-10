@@ -44,6 +44,13 @@ export function initWebSocketServer(server: HttpServer): void {
   logger.info('🔌 WebSocket server initialized on /ws/reviews');
 }
 
+/**
+ * Broadcasts real-time events to all connected frontend clients via WebSockets.
+ * Used to push asynchronous PR review updates (queued, processing, completed)
+ * directly to the UI without requiring polling.
+ * 
+ * @param event - The payload containing the event type, repository details, and review state.
+ */
 export function broadcastReviewEvent(event: {
   type: 'review:completed' | 'review:failed' | 'review:queued';
   payload: Record<string, unknown>;

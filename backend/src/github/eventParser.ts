@@ -71,6 +71,11 @@ const githubPullRequestSchema = z.object({
   user: githubUserSchema,
 });
 
+/**
+ * Comprehensive Zod schema validating the entire webhook payload from GitHub.
+ * Protects the internal system from malformed, malicious, or unexpectedly altered
+ * data structures originating from unverified webhook deliveries.
+ */
 const webhookPayloadSchema = z.object({
   action: z.string(),
   number: z.number(),

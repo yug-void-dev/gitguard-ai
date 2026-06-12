@@ -92,8 +92,9 @@ export const listRepositoryComments = async (
 export const applyCommentSuggestion = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): Promise<void> => {
+
   const { commentId } = req.params;
   try {
     const { id: userId } = (req as AuthenticatedRequest).user;
@@ -104,11 +105,26 @@ export const applyCommentSuggestion = async (
       return;
     }
 
-    const accessToken = await getUserAccessToken(userId);
+    let accessToken = await getUserAccessToken(userId);
+    if (!accessToken) {
+      // Fallback: Try to use repository owner's token
+      const comment = await GitHubComment.findById(commentId);
+      if (comment) {
+        const repoDoc = await Repository.findOne({ fullName: comment.repository.fullName });
+        if (repoDoc) {
+          const ownerUser = await User.findById(repoDoc.ownerId).select('+accessToken');
+          if (ownerUser?.accessToken) {
+            accessToken = ownerUser.accessToken;
+            logger.info({ commentId, repo: comment.repository.fullName }, 'Using repository owner fallback access token for applying suggestion');
+          }
+        }
+      }
+    }
+
     if (!accessToken) {
       res.status(401).json({
         success: false,
-        message: 'No GitHub access token found. Please log in with GitHub.',
+        message: 'No GitHub access token found. Please configure repository owner token or log in with GitHub.',
       });
       return;
     }
@@ -127,36 +143,37 @@ export const applyCommentSuggestion = async (
     logger.error({ error, commentId }, 'Failed to apply suggestion');
 
     const ghStatus = error?.status ?? error?.response?.status;
-    if (ghStatus === 404) {
-      if (error?.message?.includes('Pull Request')) {
-        res.status(422).json({
-          success: false,
-          message: error.message,
-        });
-      } else {
-        res.status(422).json({
-          success: false,
-          message:
-            'The target file was not found on GitHub in this PR branch. ' +
-            'Please verify that the file exists on GitHub and has not been deleted or renamed.',
-        });
-      }
+
+    // ── GitHub file not found on branch ──
+    if (ghStatus === 404 && !error?.message?.includes('Pull Request') && !error?.message?.includes('not found on GitHub')) {
+      res.status(422).json({
+        success: false,
+        message:
+          'The target file was not found on GitHub. ' +
+          'Please verify that the file exists in the repository.',
+      });
       return;
     }
 
     // ── DB record not found ──
     if (
-      error?.message?.includes('not found') ||
-      error?.message?.includes('record not found')
+      error?.message?.includes('GitHub comment record not found') ||
+      error?.message?.includes('Review record not found') ||
+      error?.message?.includes('Finding not found')
     ) {
       res.status(404).json({ success: false, message: error.message });
       return;
     }
 
-    // ── Generic error ──
-    next(error);
+    // ── Pass real error message to frontend for all other cases ──
+    res.status(500).json({
+      success: false,
+      message: error?.message || 'An unexpected error occurred while applying the suggestion.',
+    });
   }
 };
+
+
 
 /**
  * Serves a dynamic code quality badge.
@@ -224,6 +241,7 @@ export const getBadge = async (
 
 /**
  * Retrieves the GitHub comment document associated with a specific review ID.
+ * Returns the most recent posted comment, falling back to any non-archived comment.
  * GET /api/comments/review/:reviewId
  */
 export const getCommentByReviewId = async (
@@ -233,7 +251,17 @@ export const getCommentByReviewId = async (
 ): Promise<void> => {
   const { reviewId } = req.params;
   try {
-    const comment = await GitHubComment.findOne({ reviewId, status: { $ne: 'archived' } });
+    // Prefer the most recently created 'posted' comment, then any non-archived comment
+    let comment = await GitHubComment.findOne(
+      { reviewId, status: 'posted' },
+    ).sort({ createdAt: -1 });
+
+    if (!comment) {
+      comment = await GitHubComment.findOne(
+        { reviewId, status: { $ne: 'archived' } },
+      ).sort({ createdAt: -1 });
+    }
+
     res.status(200).json({ success: true, comment });
   } catch (error) {
     logger.error({ error, reviewId }, 'Failed to get comment by reviewId');

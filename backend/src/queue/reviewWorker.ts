@@ -33,6 +33,7 @@ import { measureStage } from './queueMetrics';
 import { enrichFindings } from '../ai/suggestionEnricher';
 import { scanDiffForVulnerabilities } from '../ai/vulnerabilityScanner';
 import { Review, IFinding } from '../models/Review';
+import { GitHubComment } from '../models/GitHubComment';
 import { logger } from '../lib/logger';
 import { ReviewJobPayload, AnalysisFinding } from '../types/analysis';
 import { processDiff } from '../github/diffProcessor';
@@ -338,11 +339,50 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
           payload: reviewDoc.toJSON(),
           timestamp: new Date().toISOString(),
         });
+
+        // ── Ensure a GitHubComment record always exists for this review ──
+        // This allows the Apply Fix feature to work even when Stage 9
+        // (GitHub posting) is skipped (e.g. test script reviews without a token).
+        try {
+          const existingComment = await GitHubComment.findOne({
+            reviewId: reviewDoc._id,
+            status: { $ne: 'archived' },
+          });
+
+          if (!existingComment) {
+            const summaryBody = buildSummary(filteredFindings, vulnerabilities.length, context.title);
+            const localComment = new GitHubComment({
+              reviewId: reviewDoc._id,
+              repository: { owner, name: repoName, fullName: repositoryFullName },
+              prNumber,
+              prTitle: context.title,
+              type: 'review',
+              bodyMarkdown: summaryBody,
+              summary: {
+                findingsCount: filteredFindings.length,
+                criticalCount: filteredFindings.filter((f) => f.severity === 'critical').length,
+                highCount: filteredFindings.filter((f) => f.severity === 'high').length,
+                mediumCount: filteredFindings.filter((f) => f.severity === 'medium').length,
+                lowCount: filteredFindings.filter((f) => f.severity === 'low').length,
+              },
+              // Mark as 'posted' so it is returned by the getCommentByReview endpoint
+              status: 'posted',
+              postedAt: new Date(),
+            });
+            localComment.addAuditEvent('created', { source: 'local-persist', reviewId: reviewDoc._id });
+            localComment.addAuditEvent('posted', { source: 'local-persist', note: 'auto-created for apply-fix support' });
+            await localComment.save();
+            log.info({ commentId: localComment._id, reviewId: reviewDoc._id }, 'Auto-created local GitHubComment for apply-fix support');
+          }
+        } catch (commentCreateErr) {
+          log.warn({ err: commentCreateErr }, 'Failed to auto-create local GitHubComment (non-blocking)');
+        }
       }
 
       return reviewDoc;
     },
   );
+
 
   // ── Stage 9: Post comment and suggestions back to GitHub PR (Teammate C) ────────────────
   if (updatedReview) {

@@ -82,6 +82,11 @@ export async function processWebhookEvent(
 
   // ── Save Pending Review to MongoDB ─────────────────────────────────────
   const [owner, repoName] = event.repository.fullName.split('/');
+  const existingReview = await Review.findOne({
+    'repository.fullName': event.repository.fullName,
+    prNumber: event.pullRequest.number,
+  });
+
   const pendingReview = await Review.findOneAndUpdate(
     {
       'repository.fullName': event.repository.fullName,
@@ -92,14 +97,14 @@ export async function processWebhookEvent(
         repository: { owner, name: repoName, fullName: event.repository.fullName },
         prTitle: event.pullRequest.title,
         status: 'pending',
-        findings: [],
-        summary: 'Pull Request received. Queued for AI analysis...',
-        metrics: {
+        findings: existingReview ? existingReview.findings : [],
+        summary: existingReview ? existingReview.summary : 'Pull Request received. Queued for AI analysis...',
+        metrics: existingReview ? existingReview.metrics : {
           vulnerabilitiesCount: 0,
           performanceIssuesCount: 0,
           codeQualityScore: 0,
         },
-        diffData: '',
+        diffData: existingReview ? existingReview.diffData : '',
       },
     },
     { upsert: true, new: true },

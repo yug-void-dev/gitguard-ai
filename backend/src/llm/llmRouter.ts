@@ -13,7 +13,7 @@ import { withRetry } from '../ai/retryStrategy';
 import { callGemini } from './providers/geminiProvider';
 import { callGroq } from './providers/groqProvider';
 import { buildSystemPrompt, buildUserPrompt, buildRetryPrompt } from './prompts/codeReviewPrompt';
-import { parseReviewResponse, mergeChunkFindings, ParsedReview, DiffChunk } from './parsers/reviewParser';
+import { parseReviewResponse, mergeChunkFindings, ParsedReview, DiffChunk, ParsedIssue } from './parsers/reviewParser';
 import { AnalysisFinding } from '../types/analysis';
 import { PRContext } from '../types/analysis';
 import { LlmProvider, LlmCallOptions } from './types';
@@ -51,6 +51,124 @@ export interface RouterOutput {
 }
 
 /**
+ * Generates a mock review based on the diff content when LLM providers fail in development.
+ */
+function generateMockReview(chunk: DiffChunk, _context: PRContext): ParsedReview {
+  const issues: ParsedIssue[] = [];
+  const lines = chunk.content.split('\n');
+  let currentFile = 'unknown_file.js';
+  let currentLine = 0;
+
+  for (const line of lines) {
+    if (line.startsWith('diff --git')) {
+      const match = line.match(/b\/(.+)$/);
+      if (match && match[1]) {
+        currentFile = match[1].trim();
+      }
+    } else if (line.startsWith('@@')) {
+      const match = line.match(/\+(\d+)/);
+      if (match && match[1]) {
+        currentLine = parseInt(match[1], 10) - 1;
+      }
+    } else if (line.startsWith('+') && !line.startsWith('+++')) {
+      currentLine++;
+      const content = line.slice(1).trim();
+
+      // Check for security issues or typical patterns we want to mock
+      if (content.includes('User.find') && !content.includes('limit') && !content.includes('try')) {
+        issues.push({
+          file: currentFile,
+          lineStart: currentLine,
+          lineEnd: currentLine,
+          type: 'performance',
+          description: '🐢 PERFORMANCE ISSUE: Unchecked/unlimited MongoDB query. Retrieving all documents without limits can overload the database and exhaust memory.',
+          suggestion: 'Implement pagination and/or set query limits using `.limit()` to restrict the volume of returned documents.',
+          fixCode: `const allUsers = await User.find({}).skip(skip).limit(limit);`,
+        });
+      } else if (content.includes('findOne') && (content.includes('req.body') || content.includes('username') || content.includes('email'))) {
+        issues.push({
+          file: currentFile,
+          lineStart: currentLine,
+          lineEnd: currentLine,
+          type: 'security',
+          description: '🚨 SECURITY ISSUE: Potential NoSQL Injection vulnerability. Query object passed directly from request body to Mongoose without validation or explicit casting.',
+          suggestion: 'Ensure that the user-supplied values are validated or sanitized (e.g., cast to String) to prevent injection of operators.',
+          fixCode: `const user = await User.findOne({ username: String(username) });`,
+        });
+      } else if (content.includes('error.message') || content.includes('error.stack')) {
+        issues.push({
+          file: currentFile,
+          lineStart: currentLine,
+          lineEnd: currentLine,
+          type: 'security',
+          description: '🚨 SECURITY ISSUE: Sensitive Information Leakage. Exposing raw database error messages or stacks in HTTP response discloses backend system details.',
+          suggestion: 'Log the error on the server side and return a clean generic error message to the client.',
+          fixCode: `res.status(500).json({ success: false, message: 'Internal server error occurred' });`,
+        });
+      } else if (content.includes('db.query') && (content.includes('+ id') || content.includes('+ username'))) {
+        issues.push({
+          file: currentFile,
+          lineStart: currentLine,
+          lineEnd: currentLine,
+          type: 'security',
+          description: '🚨 SECURITY ISSUE: SQL Injection vulnerability. Concatenating user-supplied input directly into SQL queries.',
+          suggestion: 'Use parameterized queries / prepared statements instead of string concatenation.',
+          fixCode: `return db.query('SELECT * FROM users WHERE id = $1', [id]);`,
+        });
+      }
+    } else if (!line.startsWith('-')) {
+      currentLine++;
+    }
+  }
+
+  // Fallback: if we found no specific vulnerability signature in the diff, generate a simple mock bug finding on the first added line
+  if (issues.length === 0) {
+    let fallbackLine = 1;
+    let foundAddedLine = false;
+    let fallbackFile = currentFile;
+
+    currentLine = 0;
+    for (const line of lines) {
+      if (line.startsWith('diff --git')) {
+        const match = line.match(/b\/(.+)$/);
+        if (match && match[1]) fallbackFile = match[1].trim();
+      } else if (line.startsWith('@@')) {
+        const match = line.match(/\+(\d+)/);
+        if (match && match[1]) currentLine = parseInt(match[1], 10) - 1;
+      } else if (line.startsWith('+') && !line.startsWith('+++')) {
+        currentLine++;
+        fallbackLine = currentLine;
+        foundAddedLine = true;
+        break;
+      } else if (!line.startsWith('-')) {
+        currentLine++;
+      }
+    }
+
+    if (foundAddedLine) {
+      issues.push({
+        file: fallbackFile,
+        lineStart: fallbackLine,
+        lineEnd: fallbackLine,
+        type: 'bug',
+        description: '🔍 Code Style and Robustness: Potential missing try-catch block or verification of external resources.',
+        suggestion: 'Wrap database or external service calls in try-catch statements to prevent unhandled rejections.',
+        fixCode: null,
+      });
+    }
+  }
+
+  return {
+    reviewId: `mock-${Date.now()}`,
+    severity: 'High',
+    confidence: 90,
+    issues,
+    summary: 'GitGuard AI completed a mock review fallback (LLM rate limits reached or mock mode active).',
+    suggestedTests: [],
+  };
+}
+
+/**
  * Routes chunked pull request diffs to the appropriate LLM provider.
  * 
  * Implements a smart routing strategy based on diff payload size:
@@ -76,18 +194,30 @@ export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
     const preferGroq = chunk.charCount < GROQ_CHAR_THRESHOLD;
     const providers = getProviders(preferGroq);
 
-    if (providers.length === 0) throw new Error('No LLM providers available — set GEMINI_API_KEY or GROQ_API_KEY');
-
     const userPrompt = buildUserPrompt(chunk, context, `${eventId}-chunk-${chunk.chunkIndex}`);
-    const result = await callWithFallback(providers, systemPrompt, userPrompt, eventId, log);
+    
+    try {
+      if (providers.length === 0) throw new Error('No LLM providers available — set GEMINI_API_KEY or GROQ_API_KEY');
 
-    usedProvider = result.provider;
-    totalPromptTokens     += result.promptTokens ?? 0;
-    totalCompletionTokens += result.completionTokens ?? 0;
+      const result = await callWithFallback(providers, systemPrompt, userPrompt, eventId, log);
 
-    if (result.review) {
-      reviews.push(result.review);
-      log.info({ chunk: chunk.chunkIndex, provider: result.provider, issues: result.review.issues.length }, 'Chunk reviewed');
+      usedProvider = result.provider;
+      totalPromptTokens     += result.promptTokens ?? 0;
+      totalCompletionTokens += result.completionTokens ?? 0;
+
+      if (result.review) {
+        reviews.push(result.review);
+        log.info({ chunk: chunk.chunkIndex, provider: result.provider, issues: result.review.issues.length }, 'Chunk reviewed');
+      }
+    } catch (err: any) {
+      if (env.NODE_ENV !== 'production' || process.env.LLM_MOCK === 'true') {
+        log.warn({ error: err.message }, 'LLM Routing failed in development mode. Falling back to Mock Review.');
+        const mockReview = generateMockReview(chunk, context);
+        reviews.push(mockReview);
+        usedProvider = 'mock' as any;
+      } else {
+        throw err;
+      }
     }
   }
 

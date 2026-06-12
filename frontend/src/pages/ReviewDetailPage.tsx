@@ -186,28 +186,19 @@ const FindingCard: React.FC<FindingCardProps> = ({
     try {
       const result = await applySuggestion(commentId, findingId);
       if (result.success) {
-        toast.success('✅ Suggestion Applied', 'Fix committed successfully to your PR branch on GitHub.');
+        toast.success('✅ Suggestion Applied', 'Fix committed successfully to your repository on GitHub.');
         onApplySuccess(findingId, result.commitSha || '');
       } else {
         toast.error('Apply Failed', result.message || 'Unknown error occurred.');
       }
     } catch (err: any) {
-      // Extract the backend message — covers Axios error shapes
+      // Extract the actual backend message — covers Axios error shapes
       const backendMsg: string =
         err?.response?.data?.message ??
         err?.message ??
-        'Failed to apply suggestion.';
+        'Failed to apply suggestion. Please try again.';
 
-      // Detect test/fake PR scenario (422 from backend or 404 from GitHub)
-      const status = err?.response?.status;
-      if (status === 422 || status === 404 || backendMsg.toLowerCase().includes('test script') || backendMsg.toLowerCase().includes('does not exist')) {
-        toast.error(
-          '⚠️ Cannot Apply Fix',
-          'This PR was created by a manual test script and does not exist on GitHub. Apply Fix only works on real, open GitHub pull requests.'
-        );
-      } else {
-        toast.error('❌ Apply Failed', backendMsg);
-      }
+      toast.error('❌ Apply Failed', backendMsg);
     } finally {
       setApplying(false);
     }

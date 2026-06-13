@@ -49,6 +49,7 @@ jest.mock('@octokit/rest', () => ({
 // Without this mock, findOneAndUpdate would try to connect to a real MongoDB.
 jest.mock('../../src/models/Review', () => ({
   Review: {
+    findOne: jest.fn().mockResolvedValue(null),
     findOneAndUpdate: jest.fn().mockResolvedValue({
       toJSON: () => ({
         _id: 'mock-review-id',

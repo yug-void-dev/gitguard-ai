@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Trash2, Shield, Eye, MessageSquare } from 'lucide-react';
+import { Users, Plus, Trash2 } from 'lucide-react';
 import { T } from '../../constants/theme';
 import api from '../../services/api';
 
@@ -82,25 +82,14 @@ export const TeamManagement: React.FC = () => {
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return <Shield size={16} />;
-      case 'reviewer':
-        return <MessageSquare size={16} />;
-      case 'viewer':
-        return <Eye size={16} />;
-      default:
-        return null;
-    }
-  };
+
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
-        background: T.cardBg,
+        background: T.panel,
         border: `1px solid ${T.border}`,
         borderRadius: 16,
         padding: 24,
@@ -229,11 +218,11 @@ export const TeamManagement: React.FC = () => {
       </AnimatePresence>
 
       {loading ? (
-        <div style={{ color: T.textSecondary, textAlign: 'center', padding: '20px' }}>
+        <div style={{ color: T.sub, textAlign: 'center', padding: '20px' }}>
           Loading team members...
         </div>
       ) : (!members || members.length === 0) ? (
-        <div style={{ color: T.textSecondary, textAlign: 'center', padding: '20px' }}>
+        <div style={{ color: T.sub, textAlign: 'center', padding: '20px' }}>
           No team members yet
         </div>
       ) : (
@@ -256,7 +245,7 @@ export const TeamManagement: React.FC = () => {
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
                   {member.name}
                 </div>
-                <div style={{ fontSize: 12, color: T.textSecondary }}>
+                <div style={{ fontSize: 12, color: T.sub }}>
                   {member.email}
                 </div>
               </div>

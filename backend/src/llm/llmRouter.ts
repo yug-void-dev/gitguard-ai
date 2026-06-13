@@ -210,7 +210,7 @@ export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
         log.info({ chunk: chunk.chunkIndex, provider: result.provider, issues: result.review.issues.length }, 'Chunk reviewed');
       }
     } catch (err: any) {
-      if (env.NODE_ENV !== 'production' || process.env.LLM_MOCK === 'true') {
+      if ((env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') || process.env.LLM_MOCK === 'true') {
         log.warn({ error: err.message }, 'LLM Routing failed in development mode. Falling back to Mock Review.');
         const mockReview = generateMockReview(chunk, context);
         reviews.push(mockReview);

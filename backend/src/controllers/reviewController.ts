@@ -5,6 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { Review } from '../models/Review';
+import { GitHubComment } from '../models/GitHubComment';
 import { AppError, DatabaseError, HttpStatus } from '../lib/errors';
 
 const VALID_STATUSES = ['pending', 'completed', 'failed'] as const;
@@ -87,18 +88,25 @@ export const getReviewStats = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const stats = await Review.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalReviews: { $sum: 1 },
-          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
-          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
-          failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
-          totalVulnerabilities: { $sum: '$metrics.vulnerabilitiesCount' },
-          averageScore: { $avg: '$metrics.codeQualityScore' },
+    const [stats, commentStats] = await Promise.all([
+      Review.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalReviews: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+            pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+            failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+            totalVulnerabilities: { $sum: '$metrics.vulnerabilitiesCount' },
+            averageScore: { $avg: '$metrics.codeQualityScore' },
+          },
         },
-      },
+      ]),
+      GitHubComment.aggregate([
+        { $unwind: '$appliedSuggestions' },
+        { $match: { 'appliedSuggestions.status': 'applied' } },
+        { $count: 'totalApplied' },
+      ]),
     ]);
 
     const result = stats[0] || {
@@ -110,7 +118,15 @@ export const getReviewStats = async (
       averageScore: 0,
     };
 
-    res.status(200).json({ success: true, stats: result });
+    const totalApplied = commentStats[0]?.totalApplied ?? 0;
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        ...result,
+        totalApplied,
+      },
+    });
   } catch (error) {
     next(new DatabaseError('Failed to fetch review stats'));
   }

@@ -15,6 +15,7 @@ export interface ReviewStats {
   failed: number;
   totalVulnerabilities: number;
   averageScore: number;
+  totalApplied?: number;
 }
 
 export const getReviews = async (page = 1, limit = 10): Promise<PaginatedReviews> => {

@@ -15,6 +15,7 @@ import { getReviews, getReviewStats, type ReviewStats } from '../services/review
 import type { Review } from '../types/review.types';
 import { getQueueMetrics, type QueueMetricsResponse } from '../services/queue.service';
 import { ROUTES } from '../constants/routes';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 // Import extracted components
 import { AppBackground } from '../components/layout/AppBackground';
@@ -23,6 +24,8 @@ import { DashboardActivityChart, DashboardHealthRing } from '../components/dashb
 import { DashboardTerminal } from '../components/dashboard/DashboardTerminal';
 import { DashboardReviewRow } from '../components/dashboard/DashboardReviews';
 import { DashboardQuickAction, DashboardSHead } from '../components/dashboard/DashboardQuickActions';
+import SeverityPieChart from '../components/dashboard/SeverityPieChart';
+import RepoHealthChart from '../components/dashboard/RepoHealthChart';
 
 const T = {
   bg: '#060a14',
@@ -50,6 +53,14 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [queueStats, setQueueStats] = useState<QueueMetricsResponse['data'] | null>(null);
+
+  const { events } = useWebSocket(true);
+
+  useEffect(() => {
+    if (events.length > 0) {
+      fetchData();
+    }
+  }, [events]);
 
   const fetchData = async () => {
     try {
@@ -438,12 +449,12 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
                 This Week
               </span>
             </div>
-            <DashboardActivityChart />
+            <DashboardActivityChart reviews={reviews} />
             <div style={{ display: 'flex', marginTop: 12 }}>
               {[
-                { l: 'Total PRs', v: '116', c: T.cyan },
-                { l: 'Bugs Found', v: '43', c: T.red },
-                { l: 'Auto-Fixed', v: '28', c: T.green },
+                { l: 'Total PRs', v: reviewStats?.totalReviews ?? 0, c: T.cyan },
+                { l: 'Bugs Found', v: reviewStats?.totalVulnerabilities ?? 0, c: T.red },
+                { l: 'Auto-Fixed', v: reviewStats?.totalApplied ?? 0, c: T.green },
               ].map((s) => (
                 <div key={s.l} style={{ flex: 1, textAlign: 'center' }}>
                   <p
@@ -488,6 +499,86 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
               <DashboardSHead label="Live Sentinel Log" accent={T.green} />
             </div>
             <DashboardTerminal />
+          </motion.div>
+        </div>
+
+        {/* ── Charts row — Severity Distribution + Repo Health ── */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 16,
+            marginBottom: 16,
+          }}
+        >
+          {/* Severity Pie Chart */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.52 }}
+          >
+            <div
+              style={{
+                background: T.panel,
+                border: `1px solid ${T.border}`,
+                borderRadius: 14,
+                padding: '14px 16px',
+              }}
+            >
+              <div style={{ marginBottom: 14 }}>
+                <DashboardSHead label="Bug Severity Breakdown" accent={T.violet} />
+              </div>
+              {reviews.length > 0 ? (
+                <SeverityPieChart reviews={reviews} />
+              ) : (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '32px 0',
+                    color: T.muted,
+                    fontFamily: "'Fira Code',monospace",
+                    fontSize: 11,
+                  }}
+                >
+                  No findings yet — waiting for first PR review.
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Repo Health Chart */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.58 }}
+          >
+            <div
+              style={{
+                background: T.panel,
+                border: `1px solid ${T.border}`,
+                borderRadius: 14,
+                padding: '14px 16px',
+              }}
+            >
+              <div style={{ marginBottom: 14 }}>
+                <DashboardSHead label="Repository Health Scores" accent={T.cyan} />
+              </div>
+              {reviews.length > 0 ? (
+                <RepoHealthChart reviews={reviews} />
+              ) : (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '32px 0',
+                    color: T.muted,
+                    fontFamily: "'Fira Code',monospace",
+                    fontSize: 11,
+                  }}
+                >
+                  No repository data yet — connect a repo to get started.
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
       </motion.div>

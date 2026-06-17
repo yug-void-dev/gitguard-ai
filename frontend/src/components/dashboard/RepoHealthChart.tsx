@@ -71,27 +71,7 @@ const RepoHealthChart: React.FC<RepoHealthChartProps> = ({ reviews }) => {
   const SVG_H = repos.length * (BAR_H + GAP);
 
   return (
-    <div
-      style={{
-        background: 'rgba(10,11,30,0.7)',
-        border: '1px solid rgba(99,102,241,0.15)',
-        borderRadius: 16,
-        padding: '18px',
-        backdropFilter: 'blur(8px)',
-      }}
-    >
-      <h3
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 13,
-          fontWeight: 700,
-          color: '#e2e8f0',
-          marginBottom: 16,
-        }}
-      >
-        Repository Health Scores
-      </h3>
-
+    <div style={{ width: '100%' }}>
       <svg
         width="100%"
         viewBox={`0 0 ${SVG_W} ${SVG_H}`}

@@ -10,11 +10,30 @@ const T = {
 };
 
 // ─── Activity chart ───────────────────────────────────────────────────────────
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  VALS = [12, 19, 8, 25, 31, 14, 7],
-  MV = Math.max(...VALS);
+import type { Review } from '../../types/review.types';
 
-export function DashboardActivityChart() {
+const MOCK_VALS = [12, 19, 8, 25, 31, 14, 7];
+
+export function DashboardActivityChart({ reviews = [] }: { reviews?: Review[] }) {
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // Count how many reviews were created on each day of the week
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  reviews.forEach((r) => {
+    try {
+      const date = new Date(r.createdAt);
+      const day = date.getDay(); // 0 is Sunday, 1 is Monday...
+      const idx = day === 0 ? 6 : day - 1;
+      counts[idx]++;
+    } catch {
+      // Ignore invalid dates
+    }
+  });
+
+  const hasRealData = counts.some((c) => c > 0);
+  const vals = hasRealData ? counts : MOCK_VALS;
+  const mv = Math.max(...vals, 1);
+
   return (
     <div
       style={{
@@ -38,7 +57,7 @@ export function DashboardActivityChart() {
         >
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: `${(VALS[i] / MV) * 56}px`, opacity: 1 }}
+            animate={{ height: `${(vals[i] / mv) * 56}px`, opacity: 1 }}
             transition={{
               duration: 0.65,
               delay: 0.25 + i * 0.06,

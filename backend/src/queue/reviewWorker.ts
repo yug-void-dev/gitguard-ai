@@ -45,7 +45,9 @@ import { postReviewComment } from '../services/commentService';
 import { postInlineSuggestions } from '../services/suggestionService';
 import { User } from '../models/User';
 import { Repository } from '../models/Repository';
+import { NotificationSettings } from '../models/NotificationSettings';
 import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
+import { dispatchNotifications } from '../services/slackDiscordService';
 import axios from 'axios';
 import pino from 'pino';
 import { applyPRLabels } from '../services/labelService';
@@ -118,6 +120,20 @@ export function startWorker(): Worker<ReviewJobPayload> {
             payload: failedReview.toJSON(),
             timestamp: new Date().toISOString(),
           });
+
+          try {
+            const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+            if (repoDoc) {
+              const settingsList = await NotificationSettings.find({ userId: repoDoc.ownerId });
+              await dispatchNotifications(settingsList, 'reviewFailed', {
+                title: `❌ Review Failed: ${repositoryFullName}#${prNumber}`,
+                message: `The GitGuard AI review failed to complete: ${error.message}`,
+                color: '#ff0000',
+              });
+            }
+          } catch (notifErr) {
+             logger.error({ err: notifErr }, 'Failed to dispatch failure notification');
+          }
         }
       } catch (err) {
         logger.error({ err }, 'Failed to save and broadcast review failure event');
@@ -450,6 +466,30 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     },
     '🎉 Review pipeline complete',
   );
+
+  // ── Stage 10: Dispatch Webhook Notifications ─────────────────────────────────
+  try {
+    const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+    if (repoDoc) {
+      const settingsList = await NotificationSettings.find({ userId: repoDoc.ownerId });
+      if (settingsList.length > 0) {
+        const payloadTitle = `✅ Review Completed: ${repositoryFullName}#${prNumber}`;
+        const payloadMessage = buildSummary(filteredFindings, vulnerabilities.length, context.title);
+        const color = (filteredFindings.some(f => f.severity === 'critical') || vulnerabilities.length > 0) ? '#ff0000' 
+                    : (filteredFindings.some(f => f.severity === 'high')) ? '#ff9900' 
+                    : '#36a64f';
+                    
+        await dispatchNotifications(settingsList, 'reviewCompleted', {
+          title: payloadTitle,
+          message: payloadMessage,
+          url: `https://github.com/${repositoryFullName}/pull/${prNumber}`,
+          color,
+        });
+      }
+    }
+  } catch (notifErr) {
+    log.error({ err: notifErr }, 'Failed to dispatch completion notifications');
+  }
 }
 
 // ─── Private Helpers ──────────────────────────────────────────────────────────

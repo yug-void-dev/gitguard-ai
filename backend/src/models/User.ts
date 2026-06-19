@@ -10,6 +10,7 @@ export interface IUser extends Document {
   githubId?: number;
   login: string;
   email: string;
+  role: 'admin' | 'reviewer' | 'viewer';
   password?: string;
   avatarUrl: string;
   profileUrl?: string;
@@ -27,6 +28,7 @@ const userSchema = new Schema<IUser>(
     githubId:    { type: Number, unique: true, sparse: true, index: true },
     login:       { type: String, required: true, unique: true },
     email:       { type: String, required: true, unique: true },
+    role:        { type: String, enum: ['admin', 'reviewer', 'viewer'], default: 'viewer' },
     password:    { type: String, select: false },
     avatarUrl:   { type: String, default: 'https://github.com/identicons/jedi.png' },
     profileUrl:  { type: String, default: '' },

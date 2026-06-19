@@ -7,6 +7,12 @@ const router = Router();
 // Get all notifications
 router.get('/', protect, notificationController.getNotifications);
 
+// Get notification settings
+router.get('/settings', protect, notificationController.getSettings);
+
+// Update notification settings
+router.put('/settings', protect, notificationController.updateSettings);
+
 // Clear all notifications
 router.delete('/', protect, notificationController.clearAllNotifications);
 

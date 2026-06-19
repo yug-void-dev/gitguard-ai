@@ -24,6 +24,7 @@ import repositoryRoutes from './routes/repositoryRoutes';
 import githubRoutes from './routes/githubRoutes';
 import ruleRoutes from './routes/ruleRoutes';
 import commentRoutes from './routes/commentRoutes';
+import teamRoutes from './routes/teamRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -100,6 +101,9 @@ export function createApp(): Application {
 
   // Notifications route (authenticated)
   app.use('/api/notifications', express.json(), notificationRoutes);
+
+  // Team management routes (authenticated)
+  app.use('/api/team', express.json(), teamRoutes);
 
   // Repository management routes (authenticated)
   app.use('/api/repositories', express.json(), repositoryRoutes);

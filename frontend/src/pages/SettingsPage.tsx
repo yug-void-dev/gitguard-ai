@@ -24,6 +24,7 @@ import { TeamManagement } from '../components/settings/TeamManagement';
 import { NotificationPreferences } from '../components/settings/NotificationPreferences';
 import { ApiKeyManager } from '../components/settings/ApiKeyManager';
 import { SecuritySettings } from '../components/settings/SecuritySettings';
+import { AiProviderSettings } from '../components/settings/AiProviderSettings';
 import { STORAGE_KEYS } from '../constants/config';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -454,6 +455,11 @@ const SettingsPage: React.FC = () => {
           {/* Notification Preferences */}
           <motion.div variants={itemVariants}>
             <NotificationPreferences />
+          </motion.div>
+
+          {/* AI Provider Settings */}
+          <motion.div variants={itemVariants}>
+            <AiProviderSettings />
           </motion.div>
 
           {/* API Key Manager */}

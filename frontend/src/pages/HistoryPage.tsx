@@ -14,6 +14,8 @@ import { AppBackground } from '../components/layout/AppBackground';
 import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 import { T } from '../constants/theme';
 import { AnimSelect } from '../components/common/AnimSelect';
+import ExportButton from '../components/history/ExportButton';
+import { ExportPdfButton } from '../components/history/ExportPdfButton';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -339,6 +341,8 @@ const HistoryPage: React.FC = () => {
                 }}
               />
             </div>
+            <ExportButton reviews={filtered} />
+            <ExportPdfButton reviews={filtered} />
             <motion.button
               whileHover={{ scale: 1.05, borderColor: `${T.cyan}40` }}
               whileTap={{ scale: 0.95 }}

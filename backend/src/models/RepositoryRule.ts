@@ -30,6 +30,9 @@ export interface IRepositoryRuleSpec {
 	ignoredPaths: string[];       // glob patterns to ignore
 	onlySecurity: boolean;        // only surface security-related findings
 	customPatterns?: ICustomPattern[]; // custom matching patterns
+	aiProvider?: 'auto' | 'gemini' | 'groq' | 'custom'; // preferred AI provider
+	customLlmEndpoint?: string;   // optional self-hosted endpoint
+	customLlmModel?: string;      // optional self-hosted model name
 }
 export interface IRepositoryRuleDoc extends Document {
 	repositoryId: Types.ObjectId; // reference to Repository
@@ -65,6 +68,9 @@ const repositoryRuleSpecSchema = new Schema<IRepositoryRuleSpec>(
 		ignoredPaths: { type: [String], default: [] },
 		onlySecurity: { type: Boolean, default: false },
 		customPatterns: { type: [customPatternSchema], default: [] },
+		aiProvider: { type: String, enum: ['auto', 'gemini', 'groq', 'custom'], default: 'auto' },
+		customLlmEndpoint: { type: String, default: '' },
+		customLlmModel: { type: String, default: '' },
 	},
 	{ _id: false },
 );

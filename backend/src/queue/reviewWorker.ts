@@ -232,6 +232,9 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     'Diff processed and chunked',
   );
 
+  // Load active rule spec early so we can pass AI provider preferences
+  const activeRuleSpec = await loadActiveRule(repositoryFullName);
+
   // ── Stage 3: LLM Analysis ───────────────────────────────────────────
   const llmResult = await measureStage(
     'llm-analysis',
@@ -241,6 +244,7 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
       chunks: processedDiff.chunks,
       context,
       eventId,
+      ruleSpec: activeRuleSpec,
     }),
   );
 
@@ -276,7 +280,6 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
   );
 
   // ── Stage 6: Apply repository rule engine filtering (Teammate B) ───────
-  const activeRuleSpec = await loadActiveRule(repositoryFullName);
   const filterResult = await measureStage(
     'rule-filter',
     jobId,

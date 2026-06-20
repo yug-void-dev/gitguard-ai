@@ -12,6 +12,7 @@ import { logger } from '../lib/logger';
 import { withRetry } from '../ai/retryStrategy';
 import { callGemini } from './providers/geminiProvider';
 import { callGroq } from './providers/groqProvider';
+import { callCustom } from './providers/customProvider';
 import { buildSystemPrompt, buildUserPrompt, buildRetryPrompt } from './prompts/codeReviewPrompt';
 import { parseReviewResponse, mergeChunkFindings, ParsedReview, DiffChunk, ParsedIssue } from './parsers/reviewParser';
 import { AnalysisFinding } from '../types/analysis';
@@ -23,11 +24,37 @@ const GROQ_CHAR_THRESHOLD = LLM_ROUTING.GROQ_CHAR_THRESHOLD;
 
 type ProviderFn = (s: string, u: string, o?: LlmCallOptions) => Promise<{ text: string; promptTokens?: number; completionTokens?: number }>;
 
-function getProviders(preferGroq: boolean): Array<{ name: LlmProvider; fn: ProviderFn }> {
+function getProviders(preferGroq: boolean, ruleSpec?: any): Array<{ name: LlmProvider; fn: ProviderFn; options?: LlmCallOptions }> {
+  const providerPref = ruleSpec?.aiProvider || 'auto';
+
+  if (providerPref === 'custom' && ruleSpec?.customLlmEndpoint) {
+    return [
+      {
+        name: 'custom' as LlmProvider,
+        fn: callCustom,
+        options: {
+          customEndpoint: ruleSpec.customLlmEndpoint,
+          customModel: ruleSpec.customLlmModel || 'llama3',
+        }
+      }
+    ];
+  }
+
   const all = [
     { name: 'groq' as LlmProvider,   fn: callGroq,   available: Boolean(env.GROQ_API_KEY) },
     { name: 'gemini' as LlmProvider, fn: callGemini, available: Boolean(env.GEMINI_API_KEY) },
   ];
+
+  if (providerPref === 'groq') {
+    const groq = all.find(p => p.name === 'groq');
+    if (groq?.available) return [{ name: groq.name, fn: groq.fn }];
+  }
+
+  if (providerPref === 'gemini') {
+    const gemini = all.find(p => p.name === 'gemini');
+    if (gemini?.available) return [{ name: gemini.name, fn: gemini.fn }];
+  }
+
   return all
     .sort((a) => (preferGroq ? (a.name === 'groq' ? -1 : 1) : (a.name === 'gemini' ? -1 : 1)))
     .filter((p) => p.available)
@@ -38,6 +65,7 @@ export interface RouterInput {
   chunks: DiffChunk[];
   context: PRContext;
   eventId: string;
+  ruleSpec?: any;
 }
 
 export interface RouterOutput {
@@ -180,7 +208,7 @@ function generateMockReview(chunk: DiffChunk, _context: PRContext): ParsedReview
  * @throws If all available fallback providers fail to process the diff successfully.
  */
 export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
-  const { chunks, context, eventId } = input;
+  const { chunks, context, eventId, ruleSpec } = input;
   const log = logger.child({ module: 'llmRouter', eventId });
   const startTime = Date.now();
   const systemPrompt = buildSystemPrompt(context.language);
@@ -192,7 +220,7 @@ export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
 
   for (const chunk of chunks) {
     const preferGroq = chunk.charCount < GROQ_CHAR_THRESHOLD;
-    const providers = getProviders(preferGroq);
+    const providers = getProviders(preferGroq, ruleSpec);
 
     const userPrompt = buildUserPrompt(chunk, context, `${eventId}-chunk-${chunk.chunkIndex}`);
     
@@ -237,7 +265,7 @@ interface ChunkResult {
 }
 
 async function callWithFallback(
-  providers: Array<{ name: LlmProvider; fn: ProviderFn }>,
+  providers: Array<{ name: LlmProvider; fn: ProviderFn; options?: LlmCallOptions }>,
   systemPrompt: string,
   userPrompt: string,
   eventId: string,
@@ -248,7 +276,7 @@ async function callWithFallback(
   for (const provider of providers) {
     try {
       const result = await withRetry(
-        () => provider.fn(systemPrompt, userPrompt),
+        () => provider.fn(systemPrompt, userPrompt, provider.options),
         { maxAttempts: 2, baseDelayMs: 500, label: provider.name },
         eventId,
       );
@@ -257,7 +285,7 @@ async function callWithFallback(
 
       if (!parseResult.success) {
         log.warn({ provider: provider.name, error: parseResult.error }, 'Parse failed — retrying');
-        const retryResult = await provider.fn(systemPrompt, buildRetryPrompt(userPrompt, parseResult.error ?? 'unknown'));
+        const retryResult = await provider.fn(systemPrompt, buildRetryPrompt(userPrompt, parseResult.error ?? 'unknown'), provider.options);
         parseResult = parseReviewResponse(retryResult.text, eventId);
       }
 

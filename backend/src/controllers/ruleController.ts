@@ -60,6 +60,11 @@ export const createRuleProfile = async (
       return;
     }
 
+    if (spec?.aiProvider === 'custom' && !spec?.customLlmEndpoint) {
+      res.status(400).json({ success: false, message: 'customLlmEndpoint is required when using a custom AI provider' });
+      return;
+    }
+
     const repository = await Repository.findOne({ _id: repositoryId, ownerId: userId });
     if (!repository) {
       res.status(404).json({ success: false, message: 'Repository not found' });
@@ -115,6 +120,11 @@ export const updateRuleProfile = async (
     const { id: userId } = (req as AuthenticatedRequest).user;
     const { repositoryId, profileId } = req.params;
     const { spec } = req.body;
+
+    if (spec?.aiProvider === 'custom' && !spec?.customLlmEndpoint) {
+      res.status(400).json({ success: false, message: 'customLlmEndpoint is required when using a custom AI provider' });
+      return;
+    }
 
     const repository = await Repository.findOne({ _id: repositoryId, ownerId: userId });
     if (!repository) {

@@ -15,6 +15,9 @@ router.get('/', protect, reviewController.getReviews);
 // Get review statistics
 router.get('/stats', protect, reviewController.getReviewStats);
 
+// Get usage analytics
+router.get('/analytics/usage', protect, reviewController.getUsageAnalytics);
+
 // Get a single review by ID
 router.get('/:reviewId', protect, reviewController.getReviewById);
 

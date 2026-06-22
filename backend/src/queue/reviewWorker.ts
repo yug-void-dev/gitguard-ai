@@ -346,6 +346,11 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
               ).length,
               codeQualityScore: enhancedMetrics.codeQualityScore,
             },
+            tokenUsage: {
+              promptTokens: llmResult.totalPromptTokens,
+              completionTokens: llmResult.totalCompletionTokens,
+              totalTokens: llmResult.totalPromptTokens + llmResult.totalCompletionTokens,
+            },
             diffData: rawDiff.slice(0, DIFF_PROCESSING.MAX_STORED_DIFF_CHARS), // cap stored diff size
           },
         },

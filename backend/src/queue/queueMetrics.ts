@@ -103,14 +103,7 @@ export async function getQueueSnapshot(): Promise<QueueSnapshot> {
   const queue = getReviewQueue();
 
   const [counts, isPaused] = await Promise.all([
-    queue.getJobCounts(
-      'waiting',
-      'active',
-      'completed',
-      'failed',
-      'delayed',
-      'paused',
-    ),
+    queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed', 'paused'),
     queue.isPaused(),
   ]);
 

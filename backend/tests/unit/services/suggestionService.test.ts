@@ -59,9 +59,27 @@ describe('suggestionService', () => {
       };
 
       const findings = [
-        { file: 'src/app.ts', line: 10, severity: 'critical', suggestion: 'fix 1', message: 'msg1' },
-        { file: 'src/app.ts', line: 20, severity: 'high', suggestion: 'fix 2', message: 'msg2' },
-        { file: 'src/app.ts', line: 30, severity: 'medium', suggestion: 'fix 3', message: 'msg3' },
+        {
+          file: 'src/app.ts',
+          line: 10,
+          severity: 'critical',
+          suggestion: 'fix 1',
+          message: 'msg1',
+        },
+        {
+          file: 'src/app.ts',
+          line: 20,
+          severity: 'high',
+          suggestion: 'fix 2',
+          message: 'msg2',
+        },
+        {
+          file: 'src/app.ts',
+          line: 30,
+          severity: 'medium',
+          suggestion: 'fix 3',
+          message: 'msg3',
+        },
       ];
 
       await postInlineSuggestions({

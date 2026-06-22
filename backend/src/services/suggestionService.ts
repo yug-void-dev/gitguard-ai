@@ -14,10 +14,16 @@ import { logger } from '../lib/logger';
  * Replaces a specific line in a file with the given suggestion code.
  * Supports multiline suggestions.
  */
-function replaceLine(originalContent: string, lineNumber: number, suggestion: string): string {
+function replaceLine(
+  originalContent: string,
+  lineNumber: number,
+  suggestion: string,
+): string {
   const lines = originalContent.split(/\r?\n/);
   if (lineNumber < 1 || lineNumber > lines.length) {
-    throw new Error(`Line number ${lineNumber} is out of bounds for file (total lines: ${lines.length})`);
+    throw new Error(
+      `Line number ${lineNumber} is out of bounds for file (total lines: ${lines.length})`,
+    );
   }
   lines[lineNumber - 1] = suggestion;
   return lines.join('\n');
@@ -29,7 +35,8 @@ function replaceLine(originalContent: string, lineNumber: number, suggestion: st
  * Otherwise, returns the original suggestion.
  */
 function extractCleanCode(suggestion: string): string {
-  const codeBlockRegex = /```(?:suggestion|javascript|typescript|js|ts)?\r?\n([\s\S]*?)\r?\n```/i;
+  const codeBlockRegex =
+    /```(?:suggestion|javascript|typescript|js|ts)?\r?\n([\s\S]*?)\r?\n```/i;
   const match = suggestion.match(codeBlockRegex);
   if (match && match[1]) {
     // Remove leading/trailing newlines but keep indentation
@@ -52,7 +59,12 @@ export async function postInlineSuggestions(params: {
   const owner = commentDoc.repository.owner;
   const repo = commentDoc.repository.name;
 
-  const log = logger.child({ module: 'suggestionService.postInlineSuggestions', owner, repo, prNumber });
+  const log = logger.child({
+    module: 'suggestionService.postInlineSuggestions',
+    owner,
+    repo,
+    prNumber,
+  });
 
   try {
     // 1. Get head commit SHA of the pull request
@@ -65,7 +77,11 @@ export async function postInlineSuggestions(params: {
 
     // 2. Filter critical and high findings that have a suggestion, line, and file
     const targetFindings = findings.filter(
-      (f) => (f.severity === 'critical' || f.severity === 'high') && f.suggestion && f.file && f.line,
+      (f) =>
+        (f.severity === 'critical' || f.severity === 'high') &&
+        f.suggestion &&
+        f.file &&
+        f.line,
     );
 
     log.info({ count: targetFindings.length }, 'Posting inline suggestions to GitHub');
@@ -100,10 +116,16 @@ export async function postInlineSuggestions(params: {
           status: 'posted',
         });
 
-        log.debug({ file: finding.file, line: finding.line, id: response.data.id }, 'Inline suggestion posted');
+        log.debug(
+          { file: finding.file, line: finding.line, id: response.data.id },
+          'Inline suggestion posted',
+        );
       } catch (err: unknown) {
         // Log warning and proceed with next comments
-        log.warn({ err, file: finding.file, line: finding.line }, 'Failed to post individual inline suggestion');
+        log.warn(
+          { err, file: finding.file, line: finding.line },
+          'Failed to post individual inline suggestion',
+        );
       }
     }
 
@@ -127,7 +149,11 @@ export async function applySuggestion(params: {
   userId: string;
 }): Promise<{ success: boolean; commitSha: string }> {
   const { octokit, commentId, findingId, userId } = params;
-  const log = logger.child({ module: 'suggestionService.applySuggestion', commentId, findingId });
+  const log = logger.child({
+    module: 'suggestionService.applySuggestion',
+    commentId,
+    findingId,
+  });
 
   // 1. Find the GitHubComment document
   const comment = await GitHubComment.findById(commentId);
@@ -150,12 +176,16 @@ export async function applySuggestion(params: {
   // try to find by file+line from the inlineComments on the comment document
   if (!targetFinding && comment.inlineComments && comment.inlineComments.length > 0) {
     const inlineComment = comment.inlineComments.find(
-      (ic) => ic.githubCommentId?.toString() === findingId ||
-              comment.appliedSuggestions?.some(s => s.findingId === findingId && ic.filename === s.filename)
+      (ic) =>
+        ic.githubCommentId?.toString() === findingId ||
+        comment.appliedSuggestions?.some(
+          (s) => s.findingId === findingId && ic.filename === s.filename,
+        ),
     );
     if (inlineComment) {
       targetFinding = review.findings.find(
-        (f: IFinding) => f.file === inlineComment.filename && f.line === inlineComment.line
+        (f: IFinding) =>
+          f.file === inlineComment.filename && f.line === inlineComment.line,
       );
     }
   }
@@ -170,7 +200,9 @@ export async function applySuggestion(params: {
   }
 
   if (!targetFinding) {
-    throw new Error(`Finding not found in review data (findingId: ${findingId}). The review may have been re-analyzed.`);
+    throw new Error(
+      `Finding not found in review data (findingId: ${findingId}). The review may have been re-analyzed.`,
+    );
   }
 
   const path = targetFinding.file;
@@ -191,10 +223,18 @@ export async function applySuggestion(params: {
       pull_number: comment.prNumber,
     });
     branch = pr.head.ref;
-    log.info({ branch, prNumber: comment.prNumber }, 'Using PR head branch for apply fix');
+    log.info(
+      { branch, prNumber: comment.prNumber },
+      'Using PR head branch for apply fix',
+    );
 
     // 4a. Fetch file from the real PR branch
-    fileResponse = await octokit.rest.repos.getContent({ owner, repo, path, ref: branch });
+    fileResponse = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path,
+      ref: branch,
+    });
   } catch (ghError: any) {
     const status = ghError?.status ?? ghError?.response?.status;
 
@@ -203,23 +243,37 @@ export async function applySuggestion(params: {
     }
 
     // PR not found (or file not found on PR branch) — search all branches for the file
-    log.warn({ prNumber: comment.prNumber, path }, 'PR not found on GitHub — scanning branches for file');
+    log.warn(
+      { prNumber: comment.prNumber, path },
+      'PR not found on GitHub — scanning branches for file',
+    );
 
     let foundBranch: string | null = null;
-    let foundFileResponse: Awaited<ReturnType<typeof octokit.rest.repos.getContent>> | null = null;
+    let foundFileResponse: Awaited<
+      ReturnType<typeof octokit.rest.repos.getContent>
+    > | null = null;
 
     try {
-      const { data: branches } = await octokit.rest.repos.listBranches({ owner, repo, per_page: 100 });
+      const { data: branches } = await octokit.rest.repos.listBranches({
+        owner,
+        repo,
+        per_page: 100,
+      });
 
       // Sort: try non-main branches first (more likely to have the feature file), then main/master
       const sorted = [
-        ...branches.filter(b => b.name !== 'main' && b.name !== 'master'),
-        ...branches.filter(b => b.name === 'main' || b.name === 'master'),
+        ...branches.filter((b) => b.name !== 'main' && b.name !== 'master'),
+        ...branches.filter((b) => b.name === 'main' || b.name === 'master'),
       ];
 
       for (const b of sorted) {
         try {
-          const resp = await octokit.rest.repos.getContent({ owner, repo, path, ref: b.name });
+          const resp = await octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path,
+            ref: b.name,
+          });
           if (!Array.isArray(resp.data) && 'content' in resp.data) {
             foundBranch = b.name;
             foundFileResponse = resp;
@@ -237,7 +291,7 @@ export async function applySuggestion(params: {
     if (!foundBranch || !foundFileResponse) {
       throw new Error(
         `Could not find "${path}" on any branch of ${owner}/${repo}. ` +
-        `Make sure the file is pushed to GitHub before applying the fix.`,
+          `Make sure the file is pushed to GitHub before applying the fix.`,
       );
     }
 
@@ -250,7 +304,9 @@ export async function applySuggestion(params: {
       throw new Error('Target path is a directory or has invalid content structure');
     }
 
-    const originalContent = Buffer.from(fileResponse.data.content, 'base64').toString('utf8');
+    const originalContent = Buffer.from(fileResponse.data.content, 'base64').toString(
+      'utf8',
+    );
     const cleanCode = extractCleanCode(suggestionCode);
     const updatedContent = replaceLine(originalContent, line, cleanCode);
 
@@ -282,7 +338,10 @@ export async function applySuggestion(params: {
     comment.applySuggestion(appliedData);
     await comment.save();
 
-    log.info({ commitSha: commitResponse.data.commit.sha, branch }, 'Suggestion applied via branch fallback');
+    log.info(
+      { commitSha: commitResponse.data.commit.sha, branch },
+      'Suggestion applied via branch fallback',
+    );
 
     return {
       success: true,
@@ -291,16 +350,18 @@ export async function applySuggestion(params: {
   }
 
   // 4b. Normal path (real PR exists) — file was already fetched above
-  log.info({ path, line, branch }, 'Fetching file content from GitHub to apply suggestion');
-
-
-
+  log.info(
+    { path, line, branch },
+    'Fetching file content from GitHub to apply suggestion',
+  );
 
   if (Array.isArray(fileResponse.data) || !('content' in fileResponse.data)) {
     throw new Error('Target path is a directory or has invalid content structure');
   }
 
-  const originalContent = Buffer.from(fileResponse.data.content, 'base64').toString('utf8');
+  const originalContent = Buffer.from(fileResponse.data.content, 'base64').toString(
+    'utf8',
+  );
 
   const cleanCode = extractCleanCode(suggestionCode);
 
@@ -337,7 +398,10 @@ export async function applySuggestion(params: {
   comment.applySuggestion(appliedData);
   await comment.save();
 
-  log.info({ commitSha: commitResponse.data.commit.sha }, 'Suggestion applied successfully');
+  log.info(
+    { commitSha: commitResponse.data.commit.sha },
+    'Suggestion applied successfully',
+  );
 
   return {
     success: true,

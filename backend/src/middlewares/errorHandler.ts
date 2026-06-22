@@ -49,10 +49,7 @@ export function globalErrorHandler(
 
   // ── Operational errors (AppError subclasses) ──────────────────────────
   if (isAppError(error)) {
-    reqLogger.warn(
-      { code: error.code, statusCode: error.statusCode },
-      error.message,
-    );
+    reqLogger.warn({ code: error.code, statusCode: error.statusCode }, error.message);
 
     res.status(error.statusCode).json({
       success: false,

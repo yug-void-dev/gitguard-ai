@@ -3,24 +3,24 @@
  * @description Unit tests for GitHub comment posting service (Mongoose-integrated).
  */
 
-const mockListComments        = jest.fn();
-const mockListReviewComments  = jest.fn();
-const mockDeleteComment       = jest.fn();
+const mockListComments = jest.fn();
+const mockListReviewComments = jest.fn();
+const mockDeleteComment = jest.fn();
 const mockDeleteReviewComment = jest.fn();
-const mockCreateReview        = jest.fn();
+const mockCreateReview = jest.fn();
 
 // ── Mock Octokit ─────────────────────────────────────────────────────────────
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => ({
     rest: {
       issues: {
-        listComments:  mockListComments,
+        listComments: mockListComments,
         deleteComment: mockDeleteComment,
       },
       pulls: {
-        listReviewComments:  mockListReviewComments,
+        listReviewComments: mockListReviewComments,
         deleteReviewComment: mockDeleteReviewComment,
-        createReview:        mockCreateReview,
+        createReview: mockCreateReview,
       },
     },
   })),
@@ -30,8 +30,8 @@ jest.mock('@octokit/rest', () => ({
 jest.mock('../../../src/lib/logger', () => ({
   logger: {
     child: jest.fn().mockReturnValue({
-      info:  jest.fn(),
-      warn:  jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
       error: jest.fn(),
       debug: jest.fn(),
     }),
@@ -39,16 +39,16 @@ jest.mock('../../../src/lib/logger', () => ({
 }));
 
 // ── Mock GitHubComment model ──────────────────────────────────────────────────
-const mockSave         = jest.fn().mockResolvedValue(undefined);
+const mockSave = jest.fn().mockResolvedValue(undefined);
 const mockAddAuditEvent = jest.fn();
-const mockMarkAsPosted  = jest.fn();
-const mockMarkAsFailed  = jest.fn();
+const mockMarkAsPosted = jest.fn();
+const mockMarkAsFailed = jest.fn();
 
 const mockGitHubCommentInstance = {
   addAuditEvent: mockAddAuditEvent,
-  markAsPosted:  mockMarkAsPosted,
-  markAsFailed:  mockMarkAsFailed,
-  save:          mockSave,
+  markAsPosted: mockMarkAsPosted,
+  markAsFailed: mockMarkAsFailed,
+  save: mockSave,
   githubReviewId: undefined as number | undefined,
 };
 
@@ -76,7 +76,10 @@ jest.mock('../../../src/utils/diffFormatter', () => ({
 }));
 
 import '../../../tests/helpers/setup';
-import { postReviewComment, deleteExistingBotComments } from '../../../src/services/commentService';
+import {
+  postReviewComment,
+  deleteExistingBotComments,
+} from '../../../src/services/commentService';
 import { Octokit } from '@octokit/rest';
 import { IReview } from '../../../src/models/Review';
 import { PRContext } from '../../../src/types/analysis';
@@ -84,10 +87,19 @@ import { PRContext } from '../../../src/types/analysis';
 // ── Test Fixtures ─────────────────────────────────────────────────────────────
 
 const CTX: PRContext = {
-  prNumber: 42, title: 'feat: add auth', description: null,
-  linkedIssues: [], headBranch: 'feat/auth', baseBranch: 'main',
-  language: 'TypeScript', changedFiles: 3, additions: 80, deletions: 10,
-  isDraft: false, repositoryFullName: 'owner/repo', authorLogin: 'octocat',
+  prNumber: 42,
+  title: 'feat: add auth',
+  description: null,
+  linkedIssues: [],
+  headBranch: 'feat/auth',
+  baseBranch: 'main',
+  language: 'TypeScript',
+  changedFiles: 3,
+  additions: 80,
+  deletions: 10,
+  isDraft: false,
+  repositoryFullName: 'owner/repo',
+  authorLogin: 'octocat',
 };
 
 const REVIEW_DOC = {
@@ -123,7 +135,12 @@ describe('deleteExistingBotComments', () => {
     mockListReviewComments.mockResolvedValue({ data: [] });
 
     const octokit = new Octokit();
-    await deleteExistingBotComments({ octokit, owner: 'owner', repo: 'repo', prNumber: 42 });
+    await deleteExistingBotComments({
+      octokit,
+      owner: 'owner',
+      repo: 'repo',
+      prNumber: 42,
+    });
 
     expect(mockDeleteComment).not.toHaveBeenCalled();
   });
@@ -135,7 +152,12 @@ describe('deleteExistingBotComments', () => {
     mockListReviewComments.mockResolvedValue({ data: [] });
 
     const octokit = new Octokit();
-    await deleteExistingBotComments({ octokit, owner: 'owner', repo: 'repo', prNumber: 42 });
+    await deleteExistingBotComments({
+      octokit,
+      owner: 'owner',
+      repo: 'repo',
+      prNumber: 42,
+    });
 
     expect(mockDeleteComment).toHaveBeenCalledWith(
       expect.objectContaining({ comment_id: 999 }),
@@ -162,7 +184,9 @@ describe('postReviewComment', () => {
   });
 
   it('should mark comment as failed when GitHub API throws', async () => {
-    mockCreateReview.mockRejectedValue(Object.assign(new Error('GitHub API error'), { status: 422 }));
+    mockCreateReview.mockRejectedValue(
+      Object.assign(new Error('GitHub API error'), { status: 422 }),
+    );
     const octokit = new Octokit();
 
     await expect(

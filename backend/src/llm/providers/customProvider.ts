@@ -10,7 +10,7 @@ import { LlmCallOptions } from '../types';
 export const callCustom = async (
   systemPrompt: string,
   userPrompt: string,
-  options?: LlmCallOptions
+  options?: LlmCallOptions,
 ): Promise<{ text: string; promptTokens?: number; completionTokens?: number }> => {
   const endpoint = options?.customEndpoint;
   const modelName = options?.customModel || 'llama3';
@@ -27,14 +27,14 @@ export const callCustom = async (
       model: modelName,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: userPrompt },
       ],
       temperature: 0.1, // Keep it deterministic for JSON structure
     };
 
     const response = await axios.post(endpoint, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 120000 // Custom models might be slower, allow up to 2 mins
+      timeout: 120000, // Custom models might be slower, allow up to 2 mins
     });
 
     const responseText = response.data.choices?.[0]?.message?.content || '';

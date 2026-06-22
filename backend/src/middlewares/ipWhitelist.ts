@@ -14,7 +14,10 @@ import { HttpStatus } from '../lib/errors';
 function buildWhitelist(): Set<string> {
   const raw = process.env['IP_WHITELIST'];
   if (!raw?.trim()) return new Set();
-  const ips = raw.split(',').map((ip) => ip.trim()).filter(Boolean);
+  const ips = raw
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter(Boolean);
   logger.info({ count: ips.length }, 'IP whitelist loaded');
   return new Set(ips);
 }
@@ -34,12 +37,22 @@ function extractIp(req: Request): string {
  * Enforces the IP whitelist when IP_WHITELIST env var is configured.
  * No-op when the whitelist is empty.
  */
-export function ipWhitelistMiddleware(req: Request, res: Response, next: NextFunction): void {
-  if (WHITELIST.size === 0) { next(); return; }
+export function ipWhitelistMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (WHITELIST.size === 0) {
+    next();
+    return;
+  }
 
   const clientIp = extractIp(req);
   if (!WHITELIST.has(clientIp)) {
-    logger.warn({ requestId: req.id, clientIp }, 'Webhook rejected — IP not in whitelist');
+    logger.warn(
+      { requestId: req.id, clientIp },
+      'Webhook rejected — IP not in whitelist',
+    );
     res.status(HttpStatus.FORBIDDEN).json({
       success: false,
       message: 'Forbidden',

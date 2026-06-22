@@ -18,8 +18,13 @@ export interface ShieldsIoBadge {
 /**
  * Looks up the latest completed review for a repository and returns Shields.io JSON endpoint data.
  */
-export async function generateBadgeData(repositoryFullName: string): Promise<ShieldsIoBadge> {
-  const log = logger.child({ module: 'cicdBadgeService.generateBadgeData', repositoryFullName });
+export async function generateBadgeData(
+  repositoryFullName: string,
+): Promise<ShieldsIoBadge> {
+  const log = logger.child({
+    module: 'cicdBadgeService.generateBadgeData',
+    repositoryFullName,
+  });
 
   try {
     const review = await Review.findOne({
@@ -80,7 +85,10 @@ export async function generateBadgeData(repositoryFullName: string): Promise<Shi
  * Builds and returns a direct dynamic Shields.io image URL.
  */
 export async function getBadgeSvgUrl(repositoryFullName: string): Promise<string> {
-  const log = logger.child({ module: 'cicdBadgeService.getBadgeSvgUrl', repositoryFullName });
+  const log = logger.child({
+    module: 'cicdBadgeService.getBadgeSvgUrl',
+    repositoryFullName,
+  });
 
   try {
     const review = await Review.findOne({

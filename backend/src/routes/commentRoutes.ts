@@ -72,7 +72,10 @@ router.post('/:commentId/apply', commentController.applyCommentSuggestion);
 router.post(
   '/:reviewId/post',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const log = logger.child({ module: 'commentRoutes', reviewId: req.params['reviewId'] });
+    const log = logger.child({
+      module: 'commentRoutes',
+      reviewId: req.params['reviewId'],
+    });
 
     try {
       const review = await Review.findById(req.params['reviewId']);
@@ -84,7 +87,13 @@ router.post(
       const userId = (req as Request & { user: { id: string } }).user.id;
       const user = await User.findById(userId).select('+accessToken');
       if (!user?.accessToken) {
-        next(new AppError('GitHub token not available — please reconnect', HttpStatus.UNAUTHORIZED, 'NO_GITHUB_TOKEN'));
+        next(
+          new AppError(
+            'GitHub token not available — please reconnect',
+            HttpStatus.UNAUTHORIZED,
+            'NO_GITHUB_TOKEN',
+          ),
+        );
         return;
       }
 
@@ -150,7 +159,13 @@ router.post(
       const userId = (req as Request & { user: { id: string } }).user.id;
       const user = await User.findById(userId).select('+accessToken');
       if (!user?.accessToken) {
-        next(new AppError('GitHub token not available', HttpStatus.UNAUTHORIZED, 'NO_GITHUB_TOKEN'));
+        next(
+          new AppError(
+            'GitHub token not available',
+            HttpStatus.UNAUTHORIZED,
+            'NO_GITHUB_TOKEN',
+          ),
+        );
         return;
       }
 
@@ -210,7 +225,13 @@ router.post(
       const userId = (req as Request & { user: { id: string } }).user.id;
       const user = await User.findById(userId).select('+accessToken');
       if (!user?.accessToken) {
-        next(new AppError('GitHub token not available', HttpStatus.UNAUTHORIZED, 'NO_GITHUB_TOKEN'));
+        next(
+          new AppError(
+            'GitHub token not available',
+            HttpStatus.UNAUTHORIZED,
+            'NO_GITHUB_TOKEN',
+          ),
+        );
         return;
       }
 
@@ -238,19 +259,19 @@ router.post(
 
 function buildPRContext(review: IReview): PRContext {
   return {
-    prNumber:           review.prNumber,
-    title:              review.prTitle,
-    description:        null,
-    linkedIssues:       [],
-    headBranch:         'unknown',
-    baseBranch:         'main',
-    language:           null,
-    changedFiles:       0,
-    additions:          0,
-    deletions:          0,
-    isDraft:            false,
+    prNumber: review.prNumber,
+    title: review.prTitle,
+    description: null,
+    linkedIssues: [],
+    headBranch: 'unknown',
+    baseBranch: 'main',
+    language: null,
+    changedFiles: 0,
+    additions: 0,
+    deletions: 0,
+    isDraft: false,
     repositoryFullName: review.repository.fullName,
-    authorLogin:        'unknown',
+    authorLogin: 'unknown',
   };
 }
 

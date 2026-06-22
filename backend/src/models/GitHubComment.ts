@@ -27,44 +27,50 @@ import mongoose, { Document, Schema, Model, Types } from 'mongoose';
 
 /** Inline comment on a specific line (for PR review comments) */
 export interface IInlineComment {
-  commitSha: string;              // Commit hash where comment was posted
-  filename: string;               // File being commented on
-  line: number;                   // Line number (new file)
+  commitSha: string; // Commit hash where comment was posted
+  filename: string; // File being commented on
+  line: number; // Line number (new file)
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
-  message: string;                // Issue description
-  suggestion: string;             // Suggested fix
-  githubCommentId?: number;       // GitHub comment ID if posted
-  postedAt?: Date;                // When posted to GitHub
-  status: 'pending' | 'posted' | 'updated' | 'deleted';  // Lifecycle status
+  message: string; // Issue description
+  suggestion: string; // Suggested fix
+  githubCommentId?: number; // GitHub comment ID if posted
+  postedAt?: Date; // When posted to GitHub
+  status: 'pending' | 'posted' | 'updated' | 'deleted'; // Lifecycle status
 }
 
 /** Applied suggestion (one-click apply) */
 export interface IAppliedSuggestion {
-  findingId: string;              // Reference to finding
+  findingId: string; // Reference to finding
   filename: string;
   line: number;
   originalSuggestion: string;
-  appliedCode?: string;           // Actual code that was applied
+  appliedCode?: string; // Actual code that was applied
   appliedAt: Date;
-  appliedBy: Types.ObjectId;      // User who applied (if manual)
-  autoApplied: boolean;           // True if auto-applied by bot
-  commitHash?: string;            // Commit where suggestion was applied
+  appliedBy: Types.ObjectId; // User who applied (if manual)
+  autoApplied: boolean; // True if auto-applied by bot
+  commitHash?: string; // Commit where suggestion was applied
   status: 'pending' | 'applied' | 'reverted' | 'conflicted';
 }
 
 /** Comment lifecycle event for audit trail */
 export interface ICommentEvent {
-  type: 'created' | 'posted' | 'updated' | 'deleted' | 'apply-requested' | 'apply-completed';
+  type:
+    | 'created'
+    | 'posted'
+    | 'updated'
+    | 'deleted'
+    | 'apply-requested'
+    | 'apply-completed';
   timestamp: Date;
-  details?: Record<string, unknown>;  // Additional metadata
-  error?: string;                      // Error message if failed
+  details?: Record<string, unknown>; // Additional metadata
+  error?: string; // Error message if failed
 }
 
 /** Main GitHub Comment document */
 export interface IGitHubComment extends Document {
   // GitHub identifiers
-  githubCommentId?: number;       // GitHub API comment ID (null until posted)
-  githubReviewId?: number;        // GitHub API review ID (for review comments)
+  githubCommentId?: number; // GitHub API comment ID (null until posted)
+  githubReviewId?: number; // GitHub API review ID (for review comments)
 
   // Repository reference
   repository: {
@@ -78,8 +84,8 @@ export interface IGitHubComment extends Document {
   prTitle: string;
 
   // Review reference
-  reviewId: Types.ObjectId;       // Reference to Review document
-  findingsIncluded: string[];     // Finding IDs/descriptions included in comment
+  reviewId: Types.ObjectId; // Reference to Review document
+  findingsIncluded: string[]; // Finding IDs/descriptions included in comment
 
   // Comment type
   type: 'review' | 'inline' | 'issue-comment';
@@ -88,7 +94,7 @@ export interface IGitHubComment extends Document {
   // - 'issue-comment': Comment on issue (future: Week 4+)
 
   // Content
-  bodyMarkdown: string;           // Full Markdown content posted to GitHub
+  bodyMarkdown: string; // Full Markdown content posted to GitHub
   summary: {
     findingsCount: number;
     criticalCount: number;
@@ -104,9 +110,9 @@ export interface IGitHubComment extends Document {
   appliedSuggestions?: IAppliedSuggestion[];
 
   // Comment lifecycle
-  postedAt?: Date;                // When successfully posted to GitHub
-  updatedAt?: Date;               // Last update time
-  deletedAt?: Date;               // Soft delete timestamp
+  postedAt?: Date; // When successfully posted to GitHub
+  updatedAt?: Date; // Last update time
+  deletedAt?: Date; // Soft delete timestamp
 
   // Audit trail
   auditEvents: ICommentEvent[];
@@ -129,10 +135,10 @@ export interface IGitHubComment extends Document {
 
   // Metadata
   metadata?: {
-    llmProvider?: string;         // Which LLM generated the review
-    latencyMs?: number;           // Time to generate comment
-    confidence?: number;          // Overall confidence score
-    tags?: string[];              // Custom tags (security, performance, etc.)
+    llmProvider?: string; // Which LLM generated the review
+    latencyMs?: number; // Time to generate comment
+    confidence?: number; // Overall confidence score
+    tags?: string[]; // Custom tags (security, performance, etc.)
   };
 
   // Timestamps
@@ -202,7 +208,14 @@ const commentEventSchema = new Schema<ICommentEvent>(
   {
     type: {
       type: String,
-      enum: ['created', 'posted', 'updated', 'deleted', 'apply-requested', 'apply-completed'],
+      enum: [
+        'created',
+        'posted',
+        'updated',
+        'deleted',
+        'apply-requested',
+        'apply-completed',
+      ],
       required: true,
     },
     timestamp: { type: Date, default: Date.now },
@@ -342,7 +355,10 @@ githubCommentSchema.methods.addAuditEvent = function (
 /**
  * Mark comment as successfully posted.
  */
-githubCommentSchema.methods.markAsPosted = function (this: IGitHubComment, githubCommentId: number): void {
+githubCommentSchema.methods.markAsPosted = function (
+  this: IGitHubComment,
+  githubCommentId: number,
+): void {
   this.githubCommentId = githubCommentId;
   this.postedAt = new Date();
   this.status = 'posted';
@@ -353,7 +369,11 @@ githubCommentSchema.methods.markAsPosted = function (this: IGitHubComment, githu
 /**
  * Mark comment as failed to post.
  */
-githubCommentSchema.methods.markAsFailed = function (this: IGitHubComment, code: string, message: string): void {
+githubCommentSchema.methods.markAsFailed = function (
+  this: IGitHubComment,
+  code: string,
+  message: string,
+): void {
   this.status = 'failed';
   this.lastError = {
     code,
@@ -425,7 +445,9 @@ githubCommentSchema.statics.findPending = async function (): Promise<IGitHubComm
 /**
  * Find failed comments for retry.
  */
-githubCommentSchema.statics.findFailed = async function (maxRetries?: number): Promise<IGitHubComment[]> {
+githubCommentSchema.statics.findFailed = async function (
+  maxRetries?: number,
+): Promise<IGitHubComment[]> {
   const query: Record<string, unknown> = { status: 'failed' };
   if (maxRetries !== undefined) {
     query['lastError.retryCount'] = { $lt: maxRetries };

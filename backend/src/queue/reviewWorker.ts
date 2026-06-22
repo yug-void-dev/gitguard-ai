@@ -39,7 +39,11 @@ import { ReviewJobPayload, AnalysisFinding } from '../types/analysis';
 import { processDiff } from '../github/diffProcessor';
 import { routeToLLM } from '../llm/llmRouter';
 import { broadcastReviewEvent } from '../websocket';
-import { loadActiveRule, filterFindings, scanDiffForCustomPatterns } from '../services/ruleEngine';
+import {
+  loadActiveRule,
+  filterFindings,
+  scanDiffForCustomPatterns,
+} from '../services/ruleEngine';
 import { computeEnhancedMetrics } from '../services/codeQualityService';
 import { postReviewComment } from '../services/commentService';
 import { postInlineSuggestions } from '../services/suggestionService';
@@ -69,14 +73,10 @@ let _worker: Worker<ReviewJobPayload> | null = null;
 export function startWorker(): Worker<ReviewJobPayload> {
   if (_worker) return _worker;
 
-  _worker = new Worker<ReviewJobPayload>(
-    REVIEW_QUEUE_NAME,
-    processJob,
-    {
-      connection: getRedisConnection(),
-      concurrency: WORKER_CONCURRENCY,
-    },
-  );
+  _worker = new Worker<ReviewJobPayload>(REVIEW_QUEUE_NAME, processJob, {
+    connection: getRedisConnection(),
+    concurrency: WORKER_CONCURRENCY,
+  });
 
   _worker.on('completed', (job) => {
     logger.info(
@@ -124,7 +124,9 @@ export function startWorker(): Worker<ReviewJobPayload> {
           try {
             const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
             if (repoDoc) {
-              const settingsList = await NotificationSettings.find({ userId: repoDoc.ownerId });
+              const settingsList = await NotificationSettings.find({
+                userId: repoDoc.ownerId,
+              });
               await dispatchNotifications(settingsList, 'reviewFailed', {
                 title: `❌ Review Failed: ${repositoryFullName}#${prNumber}`,
                 message: `The GitGuard AI review failed to complete: ${error.message}`,
@@ -132,7 +134,7 @@ export function startWorker(): Worker<ReviewJobPayload> {
               });
             }
           } catch (notifErr) {
-             logger.error({ err: notifErr }, 'Failed to dispatch failure notification');
+            logger.error({ err: notifErr }, 'Failed to dispatch failure notification');
           }
         }
       } catch (err) {
@@ -240,12 +242,13 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     'llm-analysis',
     jobId,
     repositoryFullName,
-    async () => routeToLLM({
-      chunks: processedDiff.chunks,
-      context,
-      eventId,
-      ruleSpec: activeRuleSpec,
-    }),
+    async () =>
+      routeToLLM({
+        chunks: processedDiff.chunks,
+        context,
+        eventId,
+        ruleSpec: activeRuleSpec,
+      }),
   );
 
   const rawFindings = llmResult.findings;
@@ -338,7 +341,11 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
               confidence: f.confidence,
               category: f.category,
             })),
-            summary: buildSummary(filteredFindings, vulnerabilities.length, context.title),
+            summary: buildSummary(
+              filteredFindings,
+              vulnerabilities.length,
+              context.title,
+            ),
             metrics: {
               vulnerabilitiesCount: vulnerabilities.length,
               performanceIssuesCount: filteredFindings.filter(
@@ -374,7 +381,11 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
           });
 
           if (!existingComment) {
-            const summaryBody = buildSummary(filteredFindings, vulnerabilities.length, context.title);
+            const summaryBody = buildSummary(
+              filteredFindings,
+              vulnerabilities.length,
+              context.title,
+            );
             const localComment = new GitHubComment({
               reviewId: reviewDoc._id,
               repository: { owner, name: repoName, fullName: repositoryFullName },
@@ -384,29 +395,42 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
               bodyMarkdown: summaryBody,
               summary: {
                 findingsCount: filteredFindings.length,
-                criticalCount: filteredFindings.filter((f) => f.severity === 'critical').length,
+                criticalCount: filteredFindings.filter((f) => f.severity === 'critical')
+                  .length,
                 highCount: filteredFindings.filter((f) => f.severity === 'high').length,
-                mediumCount: filteredFindings.filter((f) => f.severity === 'medium').length,
+                mediumCount: filteredFindings.filter((f) => f.severity === 'medium')
+                  .length,
                 lowCount: filteredFindings.filter((f) => f.severity === 'low').length,
               },
               // Mark as 'posted' so it is returned by the getCommentByReview endpoint
               status: 'posted',
               postedAt: new Date(),
             });
-            localComment.addAuditEvent('created', { source: 'local-persist', reviewId: reviewDoc._id });
-            localComment.addAuditEvent('posted', { source: 'local-persist', note: 'auto-created for apply-fix support' });
+            localComment.addAuditEvent('created', {
+              source: 'local-persist',
+              reviewId: reviewDoc._id,
+            });
+            localComment.addAuditEvent('posted', {
+              source: 'local-persist',
+              note: 'auto-created for apply-fix support',
+            });
             await localComment.save();
-            log.info({ commentId: localComment._id, reviewId: reviewDoc._id }, 'Auto-created local GitHubComment for apply-fix support');
+            log.info(
+              { commentId: localComment._id, reviewId: reviewDoc._id },
+              'Auto-created local GitHubComment for apply-fix support',
+            );
           }
         } catch (commentCreateErr) {
-          log.warn({ err: commentCreateErr }, 'Failed to auto-create local GitHubComment (non-blocking)');
+          log.warn(
+            { err: commentCreateErr },
+            'Failed to auto-create local GitHubComment (non-blocking)',
+          );
         }
       }
 
       return reviewDoc;
     },
   );
-
 
   // ── Stage 9: Post comment and suggestions back to GitHub PR (Teammate C) ────────────────
   if (updatedReview) {
@@ -426,40 +450,44 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
       if (token) {
         const octokit = createOctokitClient(token);
 
-        await measureStage(
-          'post-github-comment',
-          jobId,
-          repositoryFullName,
-          async () => {
-            // 1. Post primary bot review comment
-            const commentDoc = await postReviewComment({
+        await measureStage('post-github-comment', jobId, repositoryFullName, async () => {
+          // 1. Post primary bot review comment
+          const commentDoc = await postReviewComment({
+            octokit,
+            reviewDoc: updatedReview,
+            context,
+            eventTraceId: eventId,
+          });
+
+          // 2. Post inline suggestion blocks for critical/high issues
+          if (commentDoc) {
+            await postInlineSuggestions({
               octokit,
-              reviewDoc: updatedReview,
-              context,
-              eventTraceId: eventId,
+              commentDoc,
+              findings: filteredFindings,
+              prNumber,
             });
+          }
 
-            // 2. Post inline suggestion blocks for critical/high issues
-            if (commentDoc) {
-              await postInlineSuggestions({
-                octokit,
-                commentDoc,
-                findings: filteredFindings,
-                prNumber,
-              });
-            }
-
-            // 3. Apply PR labels based on findings
-            try {
-              const [owner, repoName] = repositoryFullName.split('/');
-              await applyPRLabels(token!, owner, repoName, prNumber, filteredFindings, eventId);
-            } catch (labelErr) {
-              log.warn({ err: labelErr }, 'Failed to apply PR labels (non-blocking)');
-            }
-          },
-        );
+          // 3. Apply PR labels based on findings
+          try {
+            const [owner, repoName] = repositoryFullName.split('/');
+            await applyPRLabels(
+              token!,
+              owner,
+              repoName,
+              prNumber,
+              filteredFindings,
+              eventId,
+            );
+          } catch (labelErr) {
+            log.warn({ err: labelErr }, 'Failed to apply PR labels (non-blocking)');
+          }
+        });
       } else {
-        log.warn('Skipping Stage 9: No access token stored for repository owner or passed in payload.');
+        log.warn(
+          'Skipping Stage 9: No access token stored for repository owner or passed in payload.',
+        );
       }
     } catch (commentError) {
       log.error({ err: commentError }, 'Failed to post GitHub comments/suggestions');
@@ -482,11 +510,19 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
       const settingsList = await NotificationSettings.find({ userId: repoDoc.ownerId });
       if (settingsList.length > 0) {
         const payloadTitle = `✅ Review Completed: ${repositoryFullName}#${prNumber}`;
-        const payloadMessage = buildSummary(filteredFindings, vulnerabilities.length, context.title);
-        const color = (filteredFindings.some(f => f.severity === 'critical') || vulnerabilities.length > 0) ? '#ff0000' 
-                    : (filteredFindings.some(f => f.severity === 'high')) ? '#ff9900' 
-                    : '#36a64f';
-                    
+        const payloadMessage = buildSummary(
+          filteredFindings,
+          vulnerabilities.length,
+          context.title,
+        );
+        const color =
+          filteredFindings.some((f) => f.severity === 'critical') ||
+          vulnerabilities.length > 0
+            ? '#ff0000'
+            : filteredFindings.some((f) => f.severity === 'high')
+              ? '#ff9900'
+              : '#36a64f';
+
         await dispatchNotifications(settingsList, 'reviewCompleted', {
           title: payloadTitle,
           message: payloadMessage,
@@ -503,10 +539,7 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
 // ─── Private Helpers ──────────────────────────────────────────────────────────
 
 /** Fetches the raw diff text from GitHub's diff URL */
-async function fetchDiff(
-  diffUrl: string,
-  log: pino.Logger,
-): Promise<string> {
+async function fetchDiff(diffUrl: string, log: pino.Logger): Promise<string> {
   log.debug({ diffUrl }, 'Fetching PR diff');
 
   const response = await axios.get<string>(diffUrl, {
@@ -521,9 +554,6 @@ async function fetchDiff(
   log.debug({ bytes: response.data.length }, 'Diff fetched');
   return response.data;
 }
-
-
-
 
 /** Builds a one-paragraph summary of the analysis */
 function buildSummary(
@@ -542,9 +572,11 @@ function buildSummary(
     `GitGuard AI reviewed "${prTitle}" and found ${findings.length} issue(s).`,
   ];
 
-  if (criticalCount > 0) parts.push(`🚨 ${criticalCount} critical issue(s) require immediate attention.`);
+  if (criticalCount > 0)
+    parts.push(`🚨 ${criticalCount} critical issue(s) require immediate attention.`);
   if (highCount > 0) parts.push(`⚠️ ${highCount} high-severity issue(s) found.`);
-  if (vulnCount > 0) parts.push(`🔒 ${vulnCount} dependency vulnerability/vulnerabilities detected.`);
+  if (vulnCount > 0)
+    parts.push(`🔒 ${vulnCount} dependency vulnerability/vulnerabilities detected.`);
 
   return parts.join(' ');
 }

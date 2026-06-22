@@ -28,7 +28,11 @@ const notificationSettingsSchema = new Schema<INotificationSettings>(
       newComment: { type: Boolean, default: true },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export const NotificationSettings: Model<INotificationSettings> = mongoose.model<INotificationSettings>('NotificationSettings', notificationSettingsSchema);
+export const NotificationSettings: Model<INotificationSettings> =
+  mongoose.model<INotificationSettings>(
+    'NotificationSettings',
+    notificationSettingsSchema,
+  );

@@ -21,7 +21,11 @@ jest.mock('../../src/config/env', () => ({
   isTest: true,
 }));
 
-import { filterFindings, scanDiffForCustomPatterns, isPathAllowed } from '../../src/services/ruleEngine';
+import {
+  filterFindings,
+  scanDiffForCustomPatterns,
+  isPathAllowed,
+} from '../../src/services/ruleEngine';
 import { IRepositoryRuleSpec } from '../../src/models/RepositoryRule';
 import { IFinding } from '../../src/models/Review';
 
@@ -111,8 +115,20 @@ describe('ruleEngine', () => {
       };
 
       const findings = [
-        { file: 'index.ts', message: 'Contains a TODO comment', confidence: 0.9, category: 'code-quality', severity: 'low' },
-        { file: 'index.ts', message: 'Critical logic flaw', confidence: 0.9, category: 'bug', severity: 'high' },
+        {
+          file: 'index.ts',
+          message: 'Contains a TODO comment',
+          confidence: 0.9,
+          category: 'code-quality',
+          severity: 'low',
+        },
+        {
+          file: 'index.ts',
+          message: 'Critical logic flaw',
+          confidence: 0.9,
+          category: 'bug',
+          severity: 'high',
+        },
       ];
 
       const result = filterFindings(findings as unknown as IFinding[], spec);
@@ -137,13 +153,21 @@ describe('ruleEngine', () => {
       };
 
       const findings = [
-        { file: 'index.ts', message: 'Do not use console.log', confidence: 0.9, category: 'code-quality', severity: 'low' },
+        {
+          file: 'index.ts',
+          message: 'Do not use console.log',
+          confidence: 0.9,
+          category: 'code-quality',
+          severity: 'low',
+        },
       ];
 
       const result = filterFindings(findings as unknown as IFinding[], spec);
       expect(result.filteredFindings.length).toBe(1);
       expect(result.filteredFindings[0].severity).toBe('high');
-      expect(result.filteredFindings[0].message).toContain('Avoid console logs in production');
+      expect(result.filteredFindings[0].message).toContain(
+        'Avoid console logs in production',
+      );
     });
   });
 

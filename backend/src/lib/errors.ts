@@ -57,7 +57,11 @@ export class WebhookPayloadError extends AppError {
 export class WebhookEventNotSupportedError extends AppError {
   constructor(eventType: string, action?: string) {
     const detail = action ? `${eventType}:${action}` : eventType;
-    super(`Unsupported webhook event: ${detail}`, HttpStatus.OK, 'WEBHOOK_EVENT_NOT_SUPPORTED');
+    super(
+      `Unsupported webhook event: ${detail}`,
+      HttpStatus.OK,
+      'WEBHOOK_EVENT_NOT_SUPPORTED',
+    );
   }
 }
 

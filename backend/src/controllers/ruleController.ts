@@ -61,7 +61,12 @@ export const createRuleProfile = async (
     }
 
     if (spec?.aiProvider === 'custom' && !spec?.customLlmEndpoint) {
-      res.status(400).json({ success: false, message: 'customLlmEndpoint is required when using a custom AI provider' });
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: 'customLlmEndpoint is required when using a custom AI provider',
+        });
       return;
     }
 
@@ -87,7 +92,10 @@ export const createRuleProfile = async (
       });
 
       clearRuleCache(repository.fullName);
-      logger.info({ profileId: profile._id, profileName, repositoryId }, 'Rule profile created');
+      logger.info(
+        { profileId: profile._id, profileName, repositoryId },
+        'Rule profile created',
+      );
 
       res.status(201).json({ success: true, profile });
     } catch (error) {
@@ -122,7 +130,12 @@ export const updateRuleProfile = async (
     const { spec } = req.body;
 
     if (spec?.aiProvider === 'custom' && !spec?.customLlmEndpoint) {
-      res.status(400).json({ success: false, message: 'customLlmEndpoint is required when using a custom AI provider' });
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: 'customLlmEndpoint is required when using a custom AI provider',
+        });
       return;
     }
 
@@ -139,7 +152,10 @@ export const updateRuleProfile = async (
     }
 
     if (spec) {
-      profile.spec = { ...(profile.spec as unknown as mongoose.Document).toObject(), ...spec };
+      profile.spec = {
+        ...(profile.spec as unknown as mongoose.Document).toObject(),
+        ...spec,
+      };
       profile.version = (profile.version || 1) + 1;
     }
 
@@ -182,7 +198,8 @@ export const deleteRuleProfile = async (
     if (profile.isActive) {
       res.status(400).json({
         success: false,
-        message: 'Cannot delete the active rule profile. Please activate another profile first.',
+        message:
+          'Cannot delete the active rule profile. Please activate another profile first.',
       });
       return;
     }

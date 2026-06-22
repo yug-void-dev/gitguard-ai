@@ -64,7 +64,12 @@ export const restrictTo = (...roles: string[]) => {
       }
 
       if (!roles.includes(user.role)) {
-        res.status(403).json({ success: false, message: `Role ${user.role} is not authorized to access this route` });
+        res
+          .status(403)
+          .json({
+            success: false,
+            message: `Role ${user.role} is not authorized to access this route`,
+          });
         return;
       }
 
@@ -74,4 +79,3 @@ export const restrictTo = (...roles: string[]) => {
     }
   };
 };
-

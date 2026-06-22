@@ -98,12 +98,16 @@ export async function processWebhookEvent(
         prTitle: event.pullRequest.title,
         status: 'pending',
         findings: existingReview ? existingReview.findings : [],
-        summary: existingReview ? existingReview.summary : 'Pull Request received. Queued for AI analysis...',
-        metrics: existingReview ? existingReview.metrics : {
-          vulnerabilitiesCount: 0,
-          performanceIssuesCount: 0,
-          codeQualityScore: 0,
-        },
+        summary: existingReview
+          ? existingReview.summary
+          : 'Pull Request received. Queued for AI analysis...',
+        metrics: existingReview
+          ? existingReview.metrics
+          : {
+              vulnerabilitiesCount: 0,
+              performanceIssuesCount: 0,
+              codeQualityScore: 0,
+            },
         diffData: existingReview ? existingReview.diffData : '',
       },
     },

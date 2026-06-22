@@ -21,7 +21,11 @@ export async function deleteExistingBotComments(params: {
 }): Promise<void> {
   const { octokit, owner, repo, prNumber } = params;
   const fullName = `${owner}/${repo}`;
-  const log = logger.child({ module: 'commentService.deleteExistingBotComments', fullName, prNumber });
+  const log = logger.child({
+    module: 'commentService.deleteExistingBotComments',
+    fullName,
+    prNumber,
+  });
 
   try {
     log.info('Deleting previous GitGuard AI comments/reviews');
@@ -35,7 +39,9 @@ export async function deleteExistingBotComments(params: {
     });
 
     for (const comment of comments) {
-      const isBot = comment.body?.includes('GitGuard AI Code Review') || comment.body?.includes('✨ About GitGuard AI');
+      const isBot =
+        comment.body?.includes('GitGuard AI Code Review') ||
+        comment.body?.includes('✨ About GitGuard AI');
       if (isBot) {
         try {
           await octokit.rest.issues.deleteComment({
@@ -45,7 +51,10 @@ export async function deleteExistingBotComments(params: {
           });
           log.debug({ commentId: comment.id }, 'Deleted previous bot issue comment');
         } catch (err) {
-          log.warn({ err, commentId: comment.id }, 'Failed to delete previous issue comment');
+          log.warn(
+            { err, commentId: comment.id },
+            'Failed to delete previous issue comment',
+          );
         }
       }
     }
@@ -59,7 +68,8 @@ export async function deleteExistingBotComments(params: {
     });
 
     for (const comment of reviewComments) {
-      const isBot = comment.body?.includes('GitGuard AI') || comment.body?.includes('Confidence:');
+      const isBot =
+        comment.body?.includes('GitGuard AI') || comment.body?.includes('Confidence:');
       if (isBot) {
         try {
           await octokit.rest.pulls.deleteReviewComment({
@@ -67,9 +77,15 @@ export async function deleteExistingBotComments(params: {
             repo,
             comment_id: comment.id,
           });
-          log.debug({ commentId: comment.id }, 'Deleted previous bot inline review comment');
+          log.debug(
+            { commentId: comment.id },
+            'Deleted previous bot inline review comment',
+          );
         } catch (err) {
-          log.warn({ err, commentId: comment.id }, 'Failed to delete previous inline review comment');
+          log.warn(
+            { err, commentId: comment.id },
+            'Failed to delete previous inline review comment',
+          );
         }
       }
     }
@@ -118,7 +134,12 @@ export async function postReviewComment(params: {
   };
 
   // Format the rich markdown comment
-  const markdownComment = formatFindingsAsMarkdown(reviewDoc.findings, context, metrics, eventTraceId);
+  const markdownComment = formatFindingsAsMarkdown(
+    reviewDoc.findings,
+    context,
+    metrics,
+    eventTraceId,
+  );
   const fullMarkdown = markdownComment.fullMarkdown;
 
   // Create local GitHubComment document
@@ -166,13 +187,19 @@ export async function postReviewComment(params: {
     gitHubComment.markAsPosted(response.data.id);
     await gitHubComment.save();
 
-    log.info({ githubReviewId: response.data.id }, 'PR review successfully posted to GitHub');
+    log.info(
+      { githubReviewId: response.data.id },
+      'PR review successfully posted to GitHub',
+    );
     return gitHubComment;
   } catch (error) {
     log.error({ error }, 'Failed to post PR review to GitHub');
 
     const err = error as { status?: number | string; message?: string };
-    gitHubComment.markAsFailed(err.status?.toString() || 'GITHUB_ERROR', err.message || 'Unknown GitHub Error');
+    gitHubComment.markAsFailed(
+      err.status?.toString() || 'GITHUB_ERROR',
+      err.message || 'Unknown GitHub Error',
+    );
     await gitHubComment.save();
 
     throw error;

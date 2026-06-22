@@ -53,11 +53,12 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
   if (env.SMTP_HOST && env.SMTP_PORT) {
     logger.info(
       { host: env.SMTP_HOST, port: env.SMTP_PORT, user: env.SMTP_USER },
-      'Initializing configured SMTP mail transporter'
+      'Initializing configured SMTP mail transporter',
     );
-    const auth = env.SMTP_USER && env.SMTP_PASS
-      ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
-      : undefined;
+    const auth =
+      env.SMTP_USER && env.SMTP_PASS
+        ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
+        : undefined;
 
     // Optimize specifically for Gmail if the host contains 'gmail'
     if (env.SMTP_HOST.toLowerCase().includes('gmail') && auth) {
@@ -75,10 +76,15 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
       });
     }
   } else if (isDev) {
-    logger.info('SMTP settings missing in development. Creating a temporary Ethereal test account...');
+    logger.info(
+      'SMTP settings missing in development. Creating a temporary Ethereal test account...',
+    );
     try {
       const testAccount = await nodemailer.createTestAccount();
-      logger.info({ user: testAccount.user }, 'Ethereal test mail account created successfully');
+      logger.info(
+        { user: testAccount.user },
+        'Ethereal test mail account created successfully',
+      );
 
       transporter = nodemailer.createTransport({
         host: testAccount.smtp.host,
@@ -90,7 +96,10 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
         },
       });
     } catch (err) {
-      logger.error({ err }, 'Failed to create Ethereal test account. Falling back to mock email logging.');
+      logger.error(
+        { err },
+        'Failed to create Ethereal test account. Falling back to mock email logging.',
+      );
       // Create a mock transporter that logs emails to console if Ethereal creation fails
       transporter = nodemailer.createTransport({
         jsonTransport: true,
@@ -98,7 +107,9 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
     }
   } else {
     // Production without SMTP: fallback to console logging to prevent crashes but log warnings
-    logger.warn('SMTP settings are missing in non-development environment! Emails will not be sent.');
+    logger.warn(
+      'SMTP settings are missing in non-development environment! Emails will not be sent.',
+    );
     transporter = nodemailer.createTransport({
       jsonTransport: true,
     });
@@ -225,7 +236,7 @@ export async function sendOtpEmail(
   toEmail: string,
   username: string,
   otp: string,
-  metadata?: EmailMetadata
+  metadata?: EmailMetadata,
 ): Promise<string | null> {
   try {
     const client = await getTransporter();
@@ -238,7 +249,10 @@ export async function sendOtpEmail(
     };
 
     const info = await client.sendMail(mailOptions);
-    logger.info({ messageId: info.messageId, to: toEmail }, 'Password reset OTP email sent successfully');
+    logger.info(
+      { messageId: info.messageId, to: toEmail },
+      'Password reset OTP email sent successfully',
+    );
 
     // Retrieve and return Ethereal test message preview URL if available
     const previewUrl = nodemailer.getTestMessageUrl(info);
@@ -252,4 +266,3 @@ export async function sendOtpEmail(
   }
   return null;
 }
-

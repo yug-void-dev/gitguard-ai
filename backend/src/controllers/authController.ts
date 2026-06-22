@@ -116,30 +116,29 @@ export const githubCallback = async (
      */
     const user = await User.findOneAndUpdate(
       {
-        $or: [
-          { githubId: githubUser.id },
-          { login: githubUser.login },
-        ],
+        $or: [{ githubId: githubUser.id }, { login: githubUser.login }],
       },
       {
         $set: {
-          githubId:   githubUser.id,
-          login:      githubUser.login,
-          avatarUrl:  githubUser.avatar_url,
+          githubId: githubUser.id,
+          login: githubUser.login,
+          avatarUrl: githubUser.avatar_url,
           profileUrl: githubUser.html_url,
           accessToken,
-          lastLogin:  new Date(),
+          lastLogin: new Date(),
           ...(primaryEmail ? { email: primaryEmail } : {}),
         },
         $setOnInsert: {
-          ...(primaryEmail ? {} : { email: `${githubUser.login}@users.noreply.github.com` }),
+          ...(primaryEmail
+            ? {}
+            : { email: `${githubUser.login}@users.noreply.github.com` }),
         },
       },
       {
-        upsert:          true,
-        new:             true,   // return the updated / newly created doc
-        runValidators:   false,  // skip validators on partial updates
-        select:          '+accessToken',
+        upsert: true,
+        new: true, // return the updated / newly created doc
+        runValidators: false, // skip validators on partial updates
+        select: '+accessToken',
       },
     );
 
@@ -148,11 +147,9 @@ export const githubCallback = async (
       return;
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
-    );
+    const token = jwt.sign({ id: user._id }, env.JWT_SECRET, {
+      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+    });
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -161,7 +158,10 @@ export const githubCallback = async (
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    logger.info({ userId: user._id, login: user.login }, 'User authenticated successfully');
+    logger.info(
+      { userId: user._id, login: user.login },
+      'User authenticated successfully',
+    );
     const firstOrigin = env.ALLOWED_ORIGINS.split(',')[0].trim();
     // Append gh_login=1 so the frontend can detect a GitHub OAuth arrival and show a toast
     res.redirect(`${firstOrigin}/dashboard?gh_login=1`);
@@ -222,8 +222,8 @@ export const login = async (
   const loginIdentifier = login || email;
 
   try {
-    const user = await User.findOne({ 
-      $or: [{ email: loginIdentifier }, { login: loginIdentifier }] 
+    const user = await User.findOne({
+      $or: [{ email: loginIdentifier }, { login: loginIdentifier }],
     }).select('+password');
 
     if (!user || !user.password) {
@@ -237,11 +237,9 @@ export const login = async (
       return;
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
-    );
+    const token = jwt.sign({ id: user._id }, env.JWT_SECRET, {
+      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+    });
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -333,15 +331,23 @@ export const forgotPassword = async (
     await user.save();
 
     // Construct security metadata for audit log in the email
-    const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'Unknown IP';
+    const rawIp =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      'Unknown IP';
     // Clean up IPv6 loopback or proxy formatting if present
-    const ip = rawIp.startsWith('::ffff:') ? rawIp.substring(7) : rawIp === '::1' ? '127.0.0.1' : rawIp;
+    const ip = rawIp.startsWith('::ffff:')
+      ? rawIp.substring(7)
+      : rawIp === '::1'
+        ? '127.0.0.1'
+        : rawIp;
     const userAgent = req.headers['user-agent'] || 'Unknown Client';
-    const timestamp = new Date().toLocaleString('en-US', {
-      timeZone: 'UTC',
-      dateStyle: 'medium',
-      timeStyle: 'medium',
-    }) + ' UTC';
+    const timestamp =
+      new Date().toLocaleString('en-US', {
+        timeZone: 'UTC',
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      }) + ' UTC';
 
     // Send the email
     const previewUrl = await mailService.sendOtpEmail(user.email, user.login, otp, {

@@ -9,9 +9,9 @@ export interface EnhancedMetrics {
   codeQualityScore: number;
   vulnerabilitiesCount: number;
   performanceIssuesCount: number;
-  bugDensity: number;          // bugs per 100 lines changed
-  securityRatio: number;       // % of findings that are security category
-  coverageScore: number;       // test-coverage score (0-100)
+  bugDensity: number; // bugs per 100 lines changed
+  securityRatio: number; // % of findings that are security category
+  coverageScore: number; // test-coverage score (0-100)
   overallGrade: 'A' | 'B' | 'C' | 'D' | 'F';
 }
 
@@ -36,12 +36,7 @@ export function computeEnhancedMetrics(
   // Deduct from quality score: critical=20, high=10, medium=5, low=2, vuln=15
   const codeQualityScore = Math.max(
     0,
-    100 -
-      critical * 20 -
-      high * 10 -
-      medium * 5 -
-      low * 2 -
-      vulnerabilitiesCount * 15,
+    100 - critical * 20 - high * 10 - medium * 5 - low * 2 - vulnerabilitiesCount * 15,
   );
 
   // 2. Parse raw diff to compute total lines changed (additions + deletions)
@@ -63,21 +58,25 @@ export function computeEnhancedMetrics(
   const bugsCount = findings.filter(
     (f) => f.category === 'bug' || f.severity === 'critical' || f.severity === 'high',
   ).length;
-  const bugDensity = linesChanged > 0 ? parseFloat(((bugsCount / linesChanged) * 100).toFixed(2)) : 0;
+  const bugDensity =
+    linesChanged > 0 ? parseFloat(((bugsCount / linesChanged) * 100).toFixed(2)) : 0;
 
   // 4. Security Ratio: Percentage of findings categorized under security
   const securityCount = findings.filter((f) => f.category === 'security').length;
-  const securityRatio = findings.length > 0 ? parseFloat(((securityCount / findings.length) * 100).toFixed(2)) : 0;
+  const securityRatio =
+    findings.length > 0
+      ? parseFloat(((securityCount / findings.length) * 100).toFixed(2))
+      : 0;
 
   // 5. Test Coverage Score: Presence of tests in changed files
   let coverageScore = 70; // baseline
-  const hasTestsChanged = rawDiff && (
-    rawDiff.toLowerCase().includes('/test/') ||
-    rawDiff.toLowerCase().includes('/tests/') ||
-    rawDiff.toLowerCase().includes('/spec/') ||
-    rawDiff.toLowerCase().includes('.test.') ||
-    rawDiff.toLowerCase().includes('.spec.')
-  );
+  const hasTestsChanged =
+    rawDiff &&
+    (rawDiff.toLowerCase().includes('/test/') ||
+      rawDiff.toLowerCase().includes('/tests/') ||
+      rawDiff.toLowerCase().includes('/spec/') ||
+      rawDiff.toLowerCase().includes('.test.') ||
+      rawDiff.toLowerCase().includes('.spec.'));
 
   if (hasTestsChanged) {
     coverageScore = 100;
@@ -101,7 +100,9 @@ export function computeEnhancedMetrics(
   else if (codeQualityScore >= 70) overallGrade = 'C';
   else if (codeQualityScore >= 60) overallGrade = 'D';
 
-  const performanceIssuesCount = findings.filter((f) => f.category === 'performance').length;
+  const performanceIssuesCount = findings.filter(
+    (f) => f.category === 'performance',
+  ).length;
 
   return {
     codeQualityScore,

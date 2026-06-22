@@ -2,7 +2,8 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 const TARGET_URL = 'http://localhost:3001/api/webhooks/github';
-const SECRET = process.env.GITHUB_WEBHOOK_SECRET || 'your_super_secret_webhook_secret_here';
+const SECRET =
+  process.env.GITHUB_WEBHOOK_SECRET || 'your_super_secret_webhook_secret_here';
 
 const rawDiffString = `diff --git a/src/auth.ts b/src/auth.ts
 index 832f05a..e74d1a5 100644
@@ -60,7 +61,7 @@ async function trigger() {
       title: 'feat: explicit raw diff test from anika0520',
       body: 'This PR introduces a raw diff directly to bypass github size limits!',
       html_url: 'https://github.com/anika0520/test-repo/pull/999',
-      diff_url: 'https://github.com/facebook/react/pull/999.diff', 
+      diff_url: 'https://github.com/facebook/react/pull/999.diff',
       draft: false,
       additions: 15,
       deletions: 4,
@@ -74,8 +75,8 @@ async function trigger() {
         login: 'anika0520',
         id: 9876543,
         avatar_url: 'https://github.com/anika0520.png',
-        type: 'User'
-      }
+        type: 'User',
+      },
     },
     repository: {
       id: 55555,
@@ -89,23 +90,21 @@ async function trigger() {
         login: 'anika0520',
         id: 9876543,
         avatar_url: 'https://github.com/anika0520.png',
-        type: 'User'
-      }
+        type: 'User',
+      },
     },
     sender: {
       login: 'anika0520',
       id: 9876543,
       avatar_url: 'https://github.com/anika0520.png',
-      type: 'User'
-    }
+      type: 'User',
+    },
   };
 
   const body = JSON.stringify(payload);
 
-  const signature = 'sha256=' + crypto
-    .createHmac('sha256', SECRET)
-    .update(body)
-    .digest('hex');
+  const signature =
+    'sha256=' + crypto.createHmac('sha256', SECRET).update(body).digest('hex');
 
   try {
     const response = await axios.post(TARGET_URL, payload, {

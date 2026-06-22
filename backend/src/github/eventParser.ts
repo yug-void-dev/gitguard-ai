@@ -14,9 +14,7 @@ import {
   PullRequestEvent,
   PullRequestAction,
 } from '../types/github';
-import {
-  WebhookPayloadError,
-} from '../lib/errors';
+import { WebhookPayloadError } from '../lib/errors';
 
 /** Actions we actively process — all others are acknowledged but ignored */
 const SUPPORTED_ACTIONS: ReadonlySet<PullRequestAction> = new Set([
@@ -95,9 +93,7 @@ const webhookPayloadSchema = z.object({
  * @throws {WebhookPayloadError} if the payload shape is invalid
  * @throws {WebhookEventNotSupportedError} if the action is not in SUPPORTED_ACTIONS
  */
-export function parsePullRequestEvent(
-  rawPayload: unknown,
-): PullRequestEvent | null {
+export function parsePullRequestEvent(rawPayload: unknown): PullRequestEvent | null {
   // ── Validate payload structure ────────────────────────────────────────
   const parseResult = webhookPayloadSchema.safeParse(rawPayload);
 

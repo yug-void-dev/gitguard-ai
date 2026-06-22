@@ -138,7 +138,6 @@ const sendWebhook = (body: unknown, signature: string, event = 'pull_request') =
 // ─── Test Suites ──────────────────────────────────────────────────────────────
 
 describe('POST /api/webhooks/github', () => {
-
   describe('✅ Successful webhook processing', () => {
     it('should return 200 + eventId for valid "opened" PR', async () => {
       const bodyStr = openedPRPayloadString;

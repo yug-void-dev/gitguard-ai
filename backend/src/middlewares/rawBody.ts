@@ -40,11 +40,7 @@ export function rawBodyJsonParser(): express.RequestHandler {
  * Standalone middleware that rejects requests with no body.
  * Placed after rawBodyJsonParser to ensure body has been read.
  */
-export function requireBody(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function requireBody(req: Request, res: Response, next: NextFunction): void {
   if (!req.rawBody || req.rawBody.length === 0) {
     res.status(400).json({
       success: false,

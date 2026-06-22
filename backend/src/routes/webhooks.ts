@@ -20,14 +20,14 @@ const router = Router();
 
 router.post(
   '/github',
-  ipWhitelistMiddleware,          // 1. IP whitelist (if configured)
-  sanitizeHeaders,                // 2. Header size/null-byte check
-  requireJsonContentType,         // 3. Enforce application/json
-  rawBodyJsonParser(),            // 4. Capture raw bytes + parse JSON
-  requireBody,                    // 5. Reject empty body
-  replayProtectionMiddleware,     // 6. Deduplicate delivery IDs
-  webhookRateLimiter,             // 7. Rate limit per IP
-  handleGithubWebhook,            // 8. Business logic
+  ipWhitelistMiddleware, // 1. IP whitelist (if configured)
+  sanitizeHeaders, // 2. Header size/null-byte check
+  requireJsonContentType, // 3. Enforce application/json
+  rawBodyJsonParser(), // 4. Capture raw bytes + parse JSON
+  requireBody, // 5. Reject empty body
+  replayProtectionMiddleware, // 6. Deduplicate delivery IDs
+  webhookRateLimiter, // 7. Rate limit per IP
+  handleGithubWebhook, // 8. Business logic
 );
 
 export default router;

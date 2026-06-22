@@ -94,14 +94,15 @@ export const applyCommentSuggestion = async (
   res: Response,
   _next: NextFunction,
 ): Promise<void> => {
-
   const { commentId } = req.params;
   try {
     const { id: userId } = (req as AuthenticatedRequest).user;
     const { findingId } = req.body;
 
     if (!findingId) {
-      res.status(400).json({ success: false, message: 'findingId is required in the request body' });
+      res
+        .status(400)
+        .json({ success: false, message: 'findingId is required in the request body' });
       return;
     }
 
@@ -110,12 +111,17 @@ export const applyCommentSuggestion = async (
       // Fallback: Try to use repository owner's token
       const comment = await GitHubComment.findById(commentId);
       if (comment) {
-        const repoDoc = await Repository.findOne({ fullName: comment.repository.fullName });
+        const repoDoc = await Repository.findOne({
+          fullName: comment.repository.fullName,
+        });
         if (repoDoc) {
           const ownerUser = await User.findById(repoDoc.ownerId).select('+accessToken');
           if (ownerUser?.accessToken) {
             accessToken = ownerUser.accessToken;
-            logger.info({ commentId, repo: comment.repository.fullName }, 'Using repository owner fallback access token for applying suggestion');
+            logger.info(
+              { commentId, repo: comment.repository.fullName },
+              'Using repository owner fallback access token for applying suggestion',
+            );
           }
         }
       }
@@ -124,7 +130,8 @@ export const applyCommentSuggestion = async (
     if (!accessToken) {
       res.status(401).json({
         success: false,
-        message: 'No GitHub access token found. Please configure repository owner token or log in with GitHub.',
+        message:
+          'No GitHub access token found. Please configure repository owner token or log in with GitHub.',
       });
       return;
     }
@@ -145,7 +152,11 @@ export const applyCommentSuggestion = async (
     const ghStatus = error?.status ?? error?.response?.status;
 
     // ── GitHub file not found on branch ──
-    if (ghStatus === 404 && !error?.message?.includes('Pull Request') && !error?.message?.includes('not found on GitHub')) {
+    if (
+      ghStatus === 404 &&
+      !error?.message?.includes('Pull Request') &&
+      !error?.message?.includes('not found on GitHub')
+    ) {
       res.status(422).json({
         success: false,
         message:
@@ -168,12 +179,11 @@ export const applyCommentSuggestion = async (
     // ── Pass real error message to frontend for all other cases ──
     res.status(500).json({
       success: false,
-      message: error?.message || 'An unexpected error occurred while applying the suggestion.',
+      message:
+        error?.message || 'An unexpected error occurred while applying the suggestion.',
     });
   }
 };
-
-
 
 /**
  * Serves a dynamic code quality badge.
@@ -182,10 +192,7 @@ export const applyCommentSuggestion = async (
  * - HTTP redirect to direct Shields.io SVG image (when redirect=true is passed)
  * GET /api/comments/badge/:repositoryId
  */
-export const getBadge = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+export const getBadge = async (req: Request, res: Response): Promise<void> => {
   try {
     const { repositoryId } = req.params;
     const { redirect } = req.query;
@@ -221,7 +228,9 @@ export const getBadge = async (
         return;
       } catch (urlErr) {
         logger.warn({ urlErr, svgUrl }, 'Malformed badge redirect URL');
-        res.status(400).json({ success: false, message: 'Malformed target redirect URL' });
+        res
+          .status(400)
+          .json({ success: false, message: 'Malformed target redirect URL' });
         return;
       }
     }
@@ -252,14 +261,15 @@ export const getCommentByReviewId = async (
   const { reviewId } = req.params;
   try {
     // Prefer the most recently created 'posted' comment, then any non-archived comment
-    let comment = await GitHubComment.findOne(
-      { reviewId, status: 'posted' },
-    ).sort({ createdAt: -1 });
+    let comment = await GitHubComment.findOne({ reviewId, status: 'posted' }).sort({
+      createdAt: -1,
+    });
 
     if (!comment) {
-      comment = await GitHubComment.findOne(
-        { reviewId, status: { $ne: 'archived' } },
-      ).sort({ createdAt: -1 });
+      comment = await GitHubComment.findOne({
+        reviewId,
+        status: { $ne: 'archived' },
+      }).sort({ createdAt: -1 });
     }
 
     res.status(200).json({ success: true, comment });

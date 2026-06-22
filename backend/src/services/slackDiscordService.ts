@@ -9,7 +9,10 @@ export interface WebhookPayload {
   color?: string; // Hex color
 }
 
-export const sendSlackNotification = async (webhookUrl: string, payload: WebhookPayload): Promise<void> => {
+export const sendSlackNotification = async (
+  webhookUrl: string,
+  payload: WebhookPayload,
+): Promise<void> => {
   try {
     await axios.post(webhookUrl, {
       attachments: [
@@ -18,18 +21,26 @@ export const sendSlackNotification = async (webhookUrl: string, payload: Webhook
           title: payload.title,
           title_link: payload.url,
           text: payload.message,
-        }
-      ]
+        },
+      ],
     });
     logger.info('Slack notification sent successfully');
   } catch (error) {
-    logger.error({ error: (error as Error).message }, 'Failed to send Slack notification');
+    logger.error(
+      { error: (error as Error).message },
+      'Failed to send Slack notification',
+    );
   }
 };
 
-export const sendDiscordNotification = async (webhookUrl: string, payload: WebhookPayload): Promise<void> => {
+export const sendDiscordNotification = async (
+  webhookUrl: string,
+  payload: WebhookPayload,
+): Promise<void> => {
   try {
-    const colorInt = payload.color ? parseInt(payload.color.replace('#', ''), 16) : 3447003;
+    const colorInt = payload.color
+      ? parseInt(payload.color.replace('#', ''), 16)
+      : 3447003;
     await axios.post(webhookUrl, {
       embeds: [
         {
@@ -37,19 +48,22 @@ export const sendDiscordNotification = async (webhookUrl: string, payload: Webho
           description: payload.message,
           url: payload.url,
           color: colorInt,
-        }
-      ]
+        },
+      ],
     });
     logger.info('Discord notification sent successfully');
   } catch (error) {
-    logger.error({ error: (error as Error).message }, 'Failed to send Discord notification');
+    logger.error(
+      { error: (error as Error).message },
+      'Failed to send Discord notification',
+    );
   }
 };
 
 export const dispatchNotifications = async (
   settingsList: INotificationSettings[],
   event: 'reviewCompleted' | 'reviewFailed' | 'newComment',
-  payload: WebhookPayload
+  payload: WebhookPayload,
 ) => {
   for (const settings of settingsList) {
     if (!settings.notifyOn[event]) continue;
@@ -57,7 +71,7 @@ export const dispatchNotifications = async (
     if (settings.slackEnabled && settings.slackWebhook) {
       await sendSlackNotification(settings.slackWebhook, payload).catch(() => {});
     }
-    
+
     if (settings.discordEnabled && settings.discordWebhook) {
       await sendDiscordNotification(settings.discordWebhook, payload).catch(() => {});
     }

@@ -2,7 +2,8 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 const TARGET_URL = 'http://localhost:3001/api/webhooks/github';
-const SECRET = process.env.GITHUB_WEBHOOK_SECRET || 'your_super_secret_webhook_secret_here';
+const SECRET =
+  process.env.GITHUB_WEBHOOK_SECRET || 'your_super_secret_webhook_secret_here';
 
 async function trigger() {
   console.log('🚀 Simulating GitHub Webhook event for anika0520...');
@@ -31,8 +32,8 @@ async function trigger() {
         login: 'anika0520',
         id: 9876543,
         avatar_url: 'https://github.com/anika0520.png',
-        type: 'User'
-      }
+        type: 'User',
+      },
     },
     repository: {
       id: 55555,
@@ -46,23 +47,21 @@ async function trigger() {
         login: 'anika0520',
         id: 9876543,
         avatar_url: 'https://github.com/anika0520.png',
-        type: 'User'
-      }
+        type: 'User',
+      },
     },
     sender: {
       login: 'anika0520',
       id: 9876543,
       avatar_url: 'https://github.com/anika0520.png',
-      type: 'User'
-    }
+      type: 'User',
+    },
   };
 
   const body = JSON.stringify(payload);
 
-  const signature = 'sha256=' + crypto
-    .createHmac('sha256', SECRET)
-    .update(body)
-    .digest('hex');
+  const signature =
+    'sha256=' + crypto.createHmac('sha256', SECRET).update(body).digest('hex');
 
   try {
     const response = await axios.post(TARGET_URL, payload, {

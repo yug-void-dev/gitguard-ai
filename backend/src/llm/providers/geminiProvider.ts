@@ -28,19 +28,22 @@ export async function callGemini(
     systemInstruction: systemPrompt,
     generationConfig: {
       maxOutputTokens: options.maxTokens ?? env.LLM_MAX_TOKENS,
-      temperature:     options.temperature ?? 0.1,
+      temperature: options.temperature ?? 0.1,
       responseMimeType: 'application/json',
     },
   });
 
-  logger.debug({ model: 'gemini-2.5-flash', promptChars: userPrompt.length }, 'Calling Gemini');
+  logger.debug(
+    { model: 'gemini-2.5-flash', promptChars: userPrompt.length },
+    'Calling Gemini',
+  );
   const result = await model.generateContent(userPrompt);
   const response = result.response;
   const usage = response.usageMetadata;
 
   return {
     text: response.text(),
-    promptTokens:     usage?.promptTokenCount,
+    promptTokens: usage?.promptTokenCount,
     completionTokens: usage?.candidatesTokenCount,
   };
 }

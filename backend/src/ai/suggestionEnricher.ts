@@ -154,7 +154,12 @@ function generateTestSuggestion(finding: AnalysisFinding): string {
       return [
         '```typescript',
         `// Suggested regression test for: ${finding.message.slice(0, 80)}`,
-        `describe('${finding.file.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'Module'}', () => {`,
+        `describe('${
+          finding.file
+            .split('/')
+            .pop()
+            ?.replace(/\.[^.]+$/, '') ?? 'Module'
+        }', () => {`,
         `  it('${testName}', () => {`,
         '    // Arrange',
         '    // TODO: set up the failing scenario described in the finding',
@@ -233,7 +238,7 @@ function generateRefactoringSuggestion(finding: AnalysisFinding): string {
   } else if (/duplicate|duplicat/.test(msg)) {
     suggestions.push(
       '- Extract the duplicated logic into a shared utility function',
-      '- Follow the DRY (Don\'t Repeat Yourself) principle',
+      "- Follow the DRY (Don't Repeat Yourself) principle",
       '- Place shared utilities in a `utils/` or `helpers/` module',
     );
   } else if (/magic\s+(number|string|value)|hardcoded|hard-coded/.test(msg)) {

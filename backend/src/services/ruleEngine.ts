@@ -4,7 +4,11 @@
  */
 
 import { Repository } from '../models/Repository';
-import { RepositoryRule, IRepositoryRuleSpec, ICustomPattern } from '../models/RepositoryRule';
+import {
+  RepositoryRule,
+  IRepositoryRuleSpec,
+  ICustomPattern,
+} from '../models/RepositoryRule';
 import { IFinding } from '../models/Review';
 import { logger } from '../lib/logger';
 
@@ -63,7 +67,9 @@ export function isPathAllowed(path: string, ignoredPaths: string[]): boolean {
  * 2. Repository-level rules field
  * 3. Permissive default rules
  */
-export async function loadActiveRule(repositoryFullName: string): Promise<IRepositoryRuleSpec> {
+export async function loadActiveRule(
+  repositoryFullName: string,
+): Promise<IRepositoryRuleSpec> {
   const cached = cache.get(repositoryFullName);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.ruleSpec;
@@ -82,7 +88,10 @@ export async function loadActiveRule(repositoryFullName: string): Promise<IRepos
   try {
     const repo = await Repository.findOne({ fullName: repositoryFullName });
     if (!repo) {
-      cache.set(repositoryFullName, { ruleSpec: defaultRule, expiresAt: Date.now() + CACHE_TTL_MS });
+      cache.set(repositoryFullName, {
+        ruleSpec: defaultRule,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
       return defaultRule;
     }
 
@@ -108,10 +117,16 @@ export async function loadActiveRule(repositoryFullName: string): Promise<IRepos
       };
     }
 
-    cache.set(repositoryFullName, { ruleSpec: spec, expiresAt: Date.now() + CACHE_TTL_MS });
+    cache.set(repositoryFullName, {
+      ruleSpec: spec,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
     return spec;
   } catch (error) {
-    logger.error({ error, repositoryFullName }, 'Failed to load active rule — using default');
+    logger.error(
+      { error, repositoryFullName },
+      'Failed to load active rule — using default',
+    );
     return defaultRule;
   }
 }
@@ -148,7 +163,10 @@ function matchesCustomPattern(finding: IFinding, p: ICustomPattern): boolean {
 /**
  * Filter a list of findings against a rule specification.
  */
-export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec): RuleFilterResult {
+export function filterFindings(
+  findings: IFinding[],
+  spec: IRepositoryRuleSpec,
+): RuleFilterResult {
   const filteredFindings: IFinding[] = [];
   let ignoredPath = 0;
   let lowConfidence = 0;
@@ -174,7 +192,10 @@ export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec):
     }
 
     // 3. Confidence threshold
-    if (typeof finding.confidence === 'number' && finding.confidence < spec.minConfidence) {
+    if (
+      typeof finding.confidence === 'number' &&
+      finding.confidence < spec.minConfidence
+    ) {
       lowConfidence++;
       continue;
     }
@@ -204,7 +225,8 @@ export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec):
       if (matchesCustomPattern(finding, fp)) {
         // Upgrade severity if custom pattern defines a higher one
         const severityOrder = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
-        const findingSev = severityOrder[modifiedFinding.severity as keyof typeof severityOrder] ?? 0;
+        const findingSev =
+          severityOrder[modifiedFinding.severity as keyof typeof severityOrder] ?? 0;
         const fpSev = severityOrder[fp.severity as keyof typeof severityOrder] ?? 0;
         if (fpSev > findingSev) {
           modifiedFinding.severity = fp.severity;
@@ -220,7 +242,8 @@ export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec):
 
   return {
     filteredFindings,
-    suppressedCount: ignoredPath + lowConfidence + securityOnly + ignoreLinting + customSuppressed,
+    suppressedCount:
+      ignoredPath + lowConfidence + securityOnly + ignoreLinting + customSuppressed,
     suppressedReasons: {
       ignoredPath,
       lowConfidence,
@@ -234,7 +257,10 @@ export function filterFindings(findings: IFinding[], spec: IRepositoryRuleSpec):
 /**
  * Scans raw pull request diff for custom forbidden patterns, generating findings.
  */
-export function scanDiffForCustomPatterns(rawDiff: string, spec: IRepositoryRuleSpec): IFinding[] {
+export function scanDiffForCustomPatterns(
+  rawDiff: string,
+  spec: IRepositoryRuleSpec,
+): IFinding[] {
   const findings: IFinding[] = [];
   const customPatterns = spec.customPatterns ?? [];
   const flagPatterns = customPatterns.filter((p) => p.action === 'flag');
@@ -295,7 +321,11 @@ export function scanDiffForCustomPatterns(rawDiff: string, spec: IRepositoryRule
         }
       }
       currentNewLine++;
-    } else if (!line.startsWith('-') && !line.startsWith('---') && !line.startsWith('index ')) {
+    } else if (
+      !line.startsWith('-') &&
+      !line.startsWith('---') &&
+      !line.startsWith('index ')
+    ) {
       currentNewLine++;
     }
   }

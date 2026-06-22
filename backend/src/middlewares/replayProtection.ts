@@ -14,7 +14,9 @@ import { logger } from '../lib/logger';
 const TTL_MS = 10 * 60 * 1000; // 10 minutes — matches GitHub's retry window
 const MAX_CACHE_SIZE = 10_000;
 
-interface CacheEntry { seenAt: number; }
+interface CacheEntry {
+  seenAt: number;
+}
 
 class DeliveryCache {
   private readonly cache = new Map<string, CacheEntry>();
@@ -23,7 +25,10 @@ class DeliveryCache {
     this.evictExpired();
     const entry = this.cache.get(deliveryId);
     if (!entry) return false;
-    if (Date.now() - entry.seenAt > TTL_MS) { this.cache.delete(deliveryId); return false; }
+    if (Date.now() - entry.seenAt > TTL_MS) {
+      this.cache.delete(deliveryId);
+      return false;
+    }
     return true;
   }
 
@@ -43,7 +48,9 @@ class DeliveryCache {
     }
   }
 
-  get size(): number { return this.cache.size; }
+  get size(): number {
+    return this.cache.size;
+  }
 }
 
 export const deliveryCache = new DeliveryCache();
@@ -52,12 +59,22 @@ export const deliveryCache = new DeliveryCache();
  * Rejects duplicate webhook deliveries within the TTL window.
  * Returns 200 (not 4xx) so GitHub does not keep retrying.
  */
-export function replayProtectionMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function replayProtectionMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const deliveryId = req.headers['x-github-delivery'] as string | undefined;
-  if (!deliveryId) { next(); return; } // No ID = manual test, allow through
+  if (!deliveryId) {
+    next();
+    return;
+  } // No ID = manual test, allow through
 
   if (deliveryCache.hasSeen(deliveryId)) {
-    logger.warn({ requestId: req.id, deliveryId }, 'Duplicate delivery — possible replay attack');
+    logger.warn(
+      { requestId: req.id, deliveryId },
+      'Duplicate delivery — possible replay attack',
+    );
     res.status(200).json({ success: true, message: 'Duplicate delivery ignored' });
     return;
   }

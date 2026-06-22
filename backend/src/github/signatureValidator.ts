@@ -87,10 +87,7 @@ export function validateWebhookSignature(
   // timing leaks based on early return.
   if (sigBuffer.length !== expectedBuffer.length) {
     // Perform a dummy comparison to burn the same approximate time
-    crypto.timingSafeEqual(
-      Buffer.alloc(expectedBuffer.length),
-      expectedBuffer,
-    );
+    crypto.timingSafeEqual(Buffer.alloc(expectedBuffer.length), expectedBuffer);
     throw new WebhookSignatureError();
   }
 

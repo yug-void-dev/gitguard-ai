@@ -6,9 +6,16 @@
 import '../helpers/setup';
 
 import {
-  AppError, WebhookSignatureError, WebhookPayloadError,
-  WebhookEventNotSupportedError, ValidationError, DatabaseError,
-  AuthError, HttpStatus, isAppError, isError,
+  AppError,
+  WebhookSignatureError,
+  WebhookPayloadError,
+  WebhookEventNotSupportedError,
+  ValidationError,
+  DatabaseError,
+  AuthError,
+  HttpStatus,
+  isAppError,
+  isError,
 } from '../../src/lib/errors';
 
 describe('Error hierarchy', () => {

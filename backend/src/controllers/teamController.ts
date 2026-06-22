@@ -6,12 +6,18 @@ import { logger } from '../lib/logger';
  * GET /api/team
  * Fetch all team members.
  */
-export const getTeamMembers = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getTeamMembers = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
-    const users = await User.find().select('-password -accessToken').sort({ createdAt: -1 });
-    
+    const users = await User.find()
+      .select('-password -accessToken')
+      .sort({ createdAt: -1 });
+
     // Map to match the frontend expected format
-    const members = users.map(user => ({
+    const members = users.map((user) => ({
       id: user._id,
       email: user.email,
       name: user.login || user.email.split('@')[0],
@@ -30,10 +36,14 @@ export const getTeamMembers = async (_req: Request, res: Response, next: NextFun
  * POST /api/team/members
  * Add a new team member.
  */
-export const addTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const addTeamMember = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const { email, role } = req.body;
-    
+
     const existing = await User.findOne({ email });
     if (existing) {
       res.status(400).json({ success: false, message: 'User already exists' });
@@ -58,7 +68,11 @@ export const addTeamMember = async (req: Request, res: Response, next: NextFunct
  * PATCH /api/team/members/:id
  * Update a team member's role.
  */
-export const updateMemberRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const updateMemberRole = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const { id } = req.params;
     const { role } = req.body;
@@ -80,7 +94,11 @@ export const updateMemberRole = async (req: Request, res: Response, next: NextFu
  * DELETE /api/team/members/:id
  * Remove a team member.
  */
-export const removeMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const removeMember = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const { id } = req.params;
 

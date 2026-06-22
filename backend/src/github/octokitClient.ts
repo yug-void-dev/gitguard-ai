@@ -8,7 +8,14 @@ import { logger } from '../lib/logger';
 
 export interface PullRequestFile {
   filename: string;
-  status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged';
+  status:
+    | 'added'
+    | 'removed'
+    | 'modified'
+    | 'renamed'
+    | 'copied'
+    | 'changed'
+    | 'unchanged';
   additions: number;
   deletions: number;
   changes: number;
@@ -22,8 +29,8 @@ export function createOctokitClient(token: string): Octokit {
     userAgent: 'GitGuard-AI/2.0.0',
     log: {
       debug: (msg: string) => logger.debug(msg),
-      info:  (msg: string) => logger.info(msg),
-      warn:  (msg: string) => logger.warn(msg),
+      info: (msg: string) => logger.info(msg),
+      warn: (msg: string) => logger.warn(msg),
       error: (msg: string) => logger.error(msg),
     },
   });
@@ -76,11 +83,11 @@ export async function fetchPRFiles(
   });
 
   return response.data.map((f) => ({
-    filename:  f.filename,
-    status:    f.status as PullRequestFile['status'],
+    filename: f.filename,
+    status: f.status as PullRequestFile['status'],
     additions: f.additions,
     deletions: f.deletions,
-    changes:   f.changes,
-    patch:     f.patch,
+    changes: f.changes,
+    patch: f.patch,
   }));
 }

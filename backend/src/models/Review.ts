@@ -34,6 +34,11 @@ export interface IReview extends Document {
     performanceIssuesCount: number;
     codeQualityScore: number;
   };
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
   diffData: string;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +70,11 @@ const reviewSchema = new Schema<IReview>(
       vulnerabilitiesCount: { type: Number, default: 0 },
       performanceIssuesCount: { type: Number, default: 0 },
       codeQualityScore: { type: Number, default: 0 },
+    },
+    tokenUsage: {
+      promptTokens: { type: Number },
+      completionTokens: { type: Number },
+      totalTokens: { type: Number },
     },
     diffData: { type: String },
   },

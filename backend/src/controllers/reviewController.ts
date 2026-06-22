@@ -152,3 +152,42 @@ export const getReviewById = async (
     next(new DatabaseError('Failed to fetch review'));
   }
 };
+
+export const getUsageAnalytics = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const analytics = await Review.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalPromptTokens: { $sum: '$tokenUsage.promptTokens' },
+          totalCompletionTokens: { $sum: '$tokenUsage.completionTokens' },
+          totalTokens: { $sum: '$tokenUsage.totalTokens' },
+          totalReviews: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const result = analytics[0] || {
+      totalPromptTokens: 0,
+      totalCompletionTokens: 0,
+      totalTokens: 0,
+      totalReviews: 0,
+    };
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        totalPromptTokens: result.totalPromptTokens,
+        totalCompletionTokens: result.totalCompletionTokens,
+        totalTokens: result.totalTokens,
+        totalReviews: result.totalReviews,
+      },
+    });
+  } catch (error) {
+    next(new DatabaseError('Failed to fetch usage analytics'));
+  }
+};

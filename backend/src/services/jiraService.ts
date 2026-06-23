@@ -11,7 +11,7 @@ export async function createJiraIssue(
   settings: INotificationSettings,
   title: string,
   description: string
-): Promise<void> => {
+): Promise<void> {
   if (!settings.jiraEnabled || !settings.jiraUrl || !settings.jiraEmail || !settings.jiraApiToken || !settings.jiraProjectKey) {
     return;
   }

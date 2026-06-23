@@ -94,7 +94,7 @@ export function createApp(): Application {
   app.use('/health', healthRoutes);
 
   // Prometheus Metrics endpoint
-  app.get('/metrics', async (req, res) => {
+  app.get('/metrics', async (_req, res) => {
     res.set('Content-Type', registry.contentType);
     res.end(await registry.metrics());
   });

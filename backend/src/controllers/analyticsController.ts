@@ -8,7 +8,7 @@ import { Review } from '../models/Review';
 import { logger } from '../lib/logger';
 
 export const getUsageAnalytics = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {

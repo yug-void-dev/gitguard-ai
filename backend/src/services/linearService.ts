@@ -11,7 +11,7 @@ export async function createLinearIssue(
   settings: INotificationSettings,
   title: string,
   description: string
-): Promise<void> => {
+): Promise<void> {
   if (!settings.linearEnabled || !settings.linearApiKey || !settings.linearTeamId) {
     return;
   }

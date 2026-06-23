@@ -4,13 +4,13 @@
  */
 
 import { Router } from 'express';
-import { requireAuth } from '../middlewares/requireAuth';
+import { protect } from '../middlewares/authMiddleware';
 import { getUsageAnalytics } from '../controllers/analyticsController';
 
 const router = Router();
 
 // Protect routes
-router.use(requireAuth);
+router.use(protect);
 
 router.get('/usage', getUsageAnalytics);
 

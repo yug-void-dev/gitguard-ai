@@ -55,7 +55,6 @@ import { dispatchNotifications } from '../services/slackDiscordService';
 import { createJiraIssue } from '../services/jiraService';
 import { createLinearIssue } from '../services/linearService';
 import { reviewsTotalCounter, reviewLatencyHistogram } from '../lib/metrics';
-import { measureStage as measureStageLib } from '../lib/telemetry';
 import axios from 'axios';
 import pino from 'pino';
 import { applyPRLabels } from '../services/labelService';

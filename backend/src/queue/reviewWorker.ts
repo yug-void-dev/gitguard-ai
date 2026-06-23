@@ -54,6 +54,7 @@ import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
 import { dispatchNotifications } from '../services/slackDiscordService';
 import { createJiraIssue } from '../services/jiraService';
 import { createLinearIssue } from '../services/linearService';
+import { reviewsTotalCounter, reviewLatencyHistogram } from '../lib/metrics';
 import { measureStage as measureStageLib } from '../lib/telemetry';
 import axios from 'axios';
 import pino from 'pino';
@@ -123,6 +124,8 @@ export function startWorker(): Worker<ReviewJobPayload> {
             payload: failedReview.toJSON(),
             timestamp: new Date().toISOString(),
           });
+
+          reviewsTotalCounter.inc({ status: 'failed', repository: repositoryFullName });
 
           try {
             const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
@@ -241,6 +244,7 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
   const activeRuleSpec = await loadActiveRule(repositoryFullName);
 
   // ── Stage 3: LLM Analysis ───────────────────────────────────────────
+  const latencyTimer = reviewLatencyHistogram.startTimer({ repository: repositoryFullName });
   const llmResult = await measureStage(
     'llm-analysis',
     jobId,
@@ -253,6 +257,7 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
         ruleSpec: activeRuleSpec,
       }),
   );
+  latencyTimer();
 
   const rawFindings = llmResult.findings;
   log.info(
@@ -546,6 +551,8 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
   } catch (notifErr) {
     log.error({ err: notifErr }, 'Failed to dispatch completion notifications');
   }
+
+  reviewsTotalCounter.inc({ status: 'completed', repository: repositoryFullName });
 }
 
 // ─── Private Helpers ──────────────────────────────────────────────────────────

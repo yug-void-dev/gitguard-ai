@@ -7,6 +7,14 @@ export interface INotificationSettings extends Document {
   slackWebhook?: string;
   discordEnabled: boolean;
   discordWebhook?: string;
+  jiraEnabled: boolean;
+  jiraUrl?: string;
+  jiraEmail?: string;
+  jiraApiToken?: string;
+  jiraProjectKey?: string;
+  linearEnabled: boolean;
+  linearApiKey?: string;
+  linearTeamId?: string;
   notifyOn: {
     reviewCompleted: boolean;
     reviewFailed: boolean;
@@ -22,6 +30,14 @@ const notificationSettingsSchema = new Schema<INotificationSettings>(
     slackWebhook: { type: String, default: '' },
     discordEnabled: { type: Boolean, default: false },
     discordWebhook: { type: String, default: '' },
+    jiraEnabled: { type: Boolean, default: false },
+    jiraUrl: { type: String, default: '' },
+    jiraEmail: { type: String, default: '' },
+    jiraApiToken: { type: String, default: '' },
+    jiraProjectKey: { type: String, default: '' },
+    linearEnabled: { type: Boolean, default: false },
+    linearApiKey: { type: String, default: '' },
+    linearTeamId: { type: String, default: '' },
     notifyOn: {
       reviewCompleted: { type: Boolean, default: true },
       reviewFailed: { type: Boolean, default: true },

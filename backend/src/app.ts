@@ -26,6 +26,7 @@ import ruleRoutes from './routes/ruleRoutes';
 import commentRoutes from './routes/commentRoutes';
 import teamRoutes from './routes/teamRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import { registry } from './lib/metrics';
 
 /**
  * Creates and configures the Express application.
@@ -91,6 +92,13 @@ export function createApp(): Application {
   // express.json() globally here to preserve req.rawBody integrity.
 
   app.use('/health', healthRoutes);
+
+  // Prometheus Metrics endpoint
+  app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  });
+
   app.use('/api/webhooks', webhookRoutes);
 
   // Auth routes (Apply JSON parser only here to avoid conflict with webhooks)

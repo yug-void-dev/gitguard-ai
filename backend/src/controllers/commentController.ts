@@ -146,16 +146,18 @@ export const applyCommentSuggestion = async (
     });
 
     res.status(200).json(result);
-  } catch (error: any) {
+  } catch (error) {
     logger.error({ error, commentId }, 'Failed to apply suggestion');
 
-    const ghStatus = error?.status ?? error?.response?.status;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as any;
+    const ghStatus = err?.status ?? err?.response?.status;
 
     // ── GitHub file not found on branch ──
     if (
       ghStatus === 404 &&
-      !error?.message?.includes('Pull Request') &&
-      !error?.message?.includes('not found on GitHub')
+      !err?.message?.includes('Pull Request') &&
+      !err?.message?.includes('not found on GitHub')
     ) {
       res.status(422).json({
         success: false,
@@ -168,11 +170,11 @@ export const applyCommentSuggestion = async (
 
     // ── DB record not found ──
     if (
-      error?.message?.includes('GitHub comment record not found') ||
-      error?.message?.includes('Review record not found') ||
-      error?.message?.includes('Finding not found')
+      err?.message?.includes('GitHub comment record not found') ||
+      err?.message?.includes('Review record not found') ||
+      err?.message?.includes('Finding not found')
     ) {
-      res.status(404).json({ success: false, message: error.message });
+      res.status(404).json({ success: false, message: err.message });
       return;
     }
 
@@ -180,7 +182,7 @@ export const applyCommentSuggestion = async (
     res.status(500).json({
       success: false,
       message:
-        error?.message || 'An unexpected error occurred while applying the suggestion.',
+        err?.message || 'An unexpected error occurred while applying the suggestion.',
     });
   }
 };

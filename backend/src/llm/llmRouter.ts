@@ -40,7 +40,8 @@ type ProviderFn = (
 
 function getProviders(
   preferGroq: boolean,
-  ruleSpec?: any,
+  ruleSpec?: any // eslint-disable-line @typescript-eslint/no-explicit-any
+,
 ): Array<{ name: LlmProvider; fn: ProviderFn; options?: LlmCallOptions }> {
   const providerPref = ruleSpec?.aiProvider || 'auto';
 
@@ -88,7 +89,7 @@ export interface RouterInput {
   chunks: DiffChunk[];
   context: PRContext;
   eventId: string;
-  ruleSpec?: any;
+  ruleSpec?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface RouterOutput {
@@ -304,7 +305,7 @@ export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
           'Chunk reviewed',
         );
       }
-    } catch (err: any) {
+    } catch (error) { const err = error as Error;
       if (
         (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') ||
         process.env.LLM_MOCK === 'true'
@@ -315,7 +316,7 @@ export async function routeToLLM(input: RouterInput): Promise<RouterOutput> {
         );
         const mockReview = generateMockReview(chunk, context);
         reviews.push(mockReview);
-        usedProvider = 'mock' as any;
+        usedProvider = 'mock' as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       } else {
         throw err;
       }

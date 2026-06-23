@@ -72,7 +72,7 @@ export const getSettings = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const authReq = req as any; // AuthenticatedRequest
+    const authReq = req as unknown as { user: { id: string } }; // AuthenticatedRequest
     let settings = await NotificationSettings.findOne({ userId: authReq.user.id });
     if (!settings) {
       settings = await NotificationSettings.create({ userId: authReq.user.id });
@@ -94,7 +94,7 @@ export const updateSettings = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const authReq = req as any;
+    const authReq = req as unknown as { user: { id: string } };
 
     if (req.body.jiraEnabled) {
       if (!req.body.jiraUrl || !req.body.jiraEmail || !req.body.jiraApiToken || !req.body.jiraProjectKey) {

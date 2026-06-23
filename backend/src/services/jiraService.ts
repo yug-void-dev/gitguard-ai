@@ -46,7 +46,9 @@ export async function createJiraIssue(
     });
 
     log.info('Successfully created Jira issue');
-  } catch (error: any) {
-    log.error({ error: error.message, data: error.response?.data }, 'Failed to create Jira issue');
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as Error & { response?: { data?: any } };
+    log.error({ error: err.message, data: err.response?.data }, 'Failed to create Jira issue');
   }
 }

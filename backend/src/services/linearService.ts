@@ -54,7 +54,9 @@ export async function createLinearIssue(
     }
 
     log.info('Successfully created Linear issue');
-  } catch (error: any) {
-    log.error({ error: error.message, data: error.response?.data }, 'Failed to create Linear issue');
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as Error & { response?: { data?: any } };
+    log.error({ error: err.message, data: err.response?.data }, 'Failed to create Linear issue');
   }
 }

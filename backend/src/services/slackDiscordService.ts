@@ -64,7 +64,7 @@ export const dispatchNotifications = async (
   settingsList: INotificationSettings[],
   event: 'reviewCompleted' | 'reviewFailed' | 'newComment',
   payload: WebhookPayload,
-) => {
+): Promise<void> => {
   for (const settings of settingsList) {
     if (!settings.notifyOn[event]) continue;
 

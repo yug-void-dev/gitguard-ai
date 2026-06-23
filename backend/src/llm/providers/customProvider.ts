@@ -49,8 +49,9 @@ export const callCustom = async (
       promptTokens: usage.prompt_tokens,
       completionTokens: usage.completion_tokens,
     };
-  } catch (error: any) {
-    log.error({ error: error.message }, 'Custom LLM API request failed');
+  } catch (error) {
+    const err = error as Error;
+    log.error({ error: err.message }, 'Custom LLM API request failed');
     throw error;
   }
 };

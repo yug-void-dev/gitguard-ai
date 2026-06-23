@@ -134,7 +134,9 @@ export async function postInlineSuggestions(params: {
       await commentDoc.save();
     }
   } catch (error) {
-    log.error({ error }, 'Failed to post inline suggestions');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const errObj = error as Error & { status?: number; response?: { status?: number } };
+    log.error({ error: errObj.message }, 'Failed to create automated GitHub suggestion comment');
   }
 }
 
@@ -235,11 +237,13 @@ export async function applySuggestion(params: {
       path,
       ref: branch,
     });
-  } catch (ghError: any) {
-    const status = ghError?.status ?? ghError?.response?.status;
+  } catch (ghError) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ghErr = ghError as any;
+    const status = ghErr?.status ?? ghErr?.response?.status;
 
     if (status !== 404) {
-      throw ghError; // re-throw non-404 errors immediately
+      throw ghErr; // re-throw non-404 errors immediately
     }
 
     // PR not found (or file not found on PR branch) — search all branches for the file
@@ -284,7 +288,7 @@ export async function applySuggestion(params: {
           // file not on this branch, keep searching
         }
       }
-    } catch (listError: any) {
+    } catch (listError) {
       log.warn({ listError }, 'Could not list branches');
     }
 

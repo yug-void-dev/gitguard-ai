@@ -95,6 +95,21 @@ export const updateSettings = async (
 ): Promise<void> => {
   try {
     const authReq = req as any;
+
+    if (req.body.jiraEnabled) {
+      if (!req.body.jiraUrl || !req.body.jiraEmail || !req.body.jiraApiToken || !req.body.jiraProjectKey) {
+        res.status(400).json({ success: false, message: 'Jira URL, Email, API Token, and Project Key are required when Jira is enabled' });
+        return;
+      }
+    }
+
+    if (req.body.linearEnabled) {
+      if (!req.body.linearApiKey || !req.body.linearTeamId) {
+        res.status(400).json({ success: false, message: 'Linear API Key and Team ID are required when Linear is enabled' });
+        return;
+      }
+    }
+
     const settings = await NotificationSettings.findOneAndUpdate(
       { userId: authReq.user.id },
       { $set: req.body },

@@ -25,6 +25,7 @@ import githubRoutes from './routes/githubRoutes';
 import ruleRoutes from './routes/ruleRoutes';
 import commentRoutes from './routes/commentRoutes';
 import teamRoutes from './routes/teamRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
 
 /**
  * Creates and configures the Express application.
@@ -116,6 +117,9 @@ export function createApp(): Application {
 
   // Comment, label and suggestion posting routes
   app.use('/api/comments', express.json(), commentRoutes);
+
+  // Analytics routes (authenticated)
+  app.use('/api/analytics', express.json(), analyticsRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

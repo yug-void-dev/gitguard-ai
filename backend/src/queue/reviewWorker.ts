@@ -52,6 +52,9 @@ import { Repository } from '../models/Repository';
 import { NotificationSettings } from '../models/NotificationSettings';
 import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
 import { dispatchNotifications } from '../services/slackDiscordService';
+import { createJiraIssue } from '../services/jiraService';
+import { createLinearIssue } from '../services/linearService';
+import { measureStage as measureStageLib } from '../lib/telemetry';
 import axios from 'axios';
 import pino from 'pino';
 import { applyPRLabels } from '../services/labelService';
@@ -529,6 +532,15 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
           url: `https://github.com/${repositoryFullName}/pull/${prNumber}`,
           color,
         });
+
+        const isCritical = filteredFindings.some((f) => f.severity === 'critical') || vulnerabilities.length > 0;
+        
+        if (isCritical) {
+          for (const settings of settingsList) {
+            await createJiraIssue(settings, `[GitGuard AI] Critical Issues in PR #${prNumber}`, payloadMessage);
+            await createLinearIssue(settings, `[GitGuard AI] Critical Issues in PR #${prNumber}`, payloadMessage);
+          }
+        }
       }
     }
   } catch (notifErr) {

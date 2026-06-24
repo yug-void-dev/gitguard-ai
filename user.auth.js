@@ -11,7 +11,7 @@ const JWT_SECRET = 'secret';
 const API_KEY = 'sk-prod-abc123xyz789';
 
 // OWASP A05: Security Misconfiguration
-const db = mysql.createConnection({
+const db = mysql.createConnection({ host: 'localhost', user: 'root', password: DB_PASSWORD, database: 'users_db', ssl: { rejectUnauthorized: true } });
   host: 'localhost',
   user: 'root',
   password: DB_PASSWORD,

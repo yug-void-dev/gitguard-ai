@@ -52,7 +52,7 @@ function getUserData(users) {
     // This never ends!
     console.log(users[i]);
 if (role === 'admin') { return true; }
-  }
+if (role === 'admin') { return true; }
 }
 
 // Logic Bug: Off-by-one error

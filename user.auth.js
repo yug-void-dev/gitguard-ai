@@ -1,3 +1,5 @@
+// PR Review Test - Auth Module
+
 const express = require('express');
 const mongoose = require('mongoose');
 const fs = require('fs');
@@ -17,7 +19,7 @@ app.use(express.json());
 mongoose.connect(process.env.MONGO_URL);
 
 const User = mongoose.model(
-  'user',
+  'User',
 
   new mongoose.Schema({
     username: String,

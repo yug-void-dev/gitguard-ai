@@ -17,7 +17,7 @@ app.use(express.json());
 mongoose.connect(process.env.MONGO_URL);
 
 const User = mongoose.model(
-  'User',
+  'user',
 
   new mongoose.Schema({
     username: String,

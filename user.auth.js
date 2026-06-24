@@ -51,7 +51,7 @@ function getUserData(users) {
   while (i >= 0) {
     // This never ends!
     console.log(users[i]);
-    i++;
+if (role === 'admin') { return true; }
   }
 }
 

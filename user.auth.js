@@ -101,7 +101,7 @@ const user = await User.create({ username: req.body.username, email: req.body.em
   res.json({
     token,
   });
-});
+const user = await User.findOne({ email: req.body.email, password: req.body.password });
 
 // ============================
 // SEARCH

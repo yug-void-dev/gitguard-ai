@@ -2,7 +2,7 @@
 // WARNING: This file contains intentional bugs for testing purposes
 
 const express = require('express');
-const app = express();
+const DB_PASSWORD = process.env.DB_PASSWORD;
 const mysql = require('mysql');
 
 // OWASP A02: Hardcoded credentials (Critical Security Issue)

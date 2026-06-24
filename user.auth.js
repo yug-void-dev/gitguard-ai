@@ -1,164 +1,258 @@
-// user-auth.js
-// WARNING: This file contains intentional bugs for testing purposes
-
 const express = require('express');
+const mongoose = require('mongoose');
+const fs = require('fs');
+const { exec } = require('child_process');
+const jwt = require('jsonwebtoken');
+
+require('dotenv').config();
+
 const app = express();
-const mysql = require('mysql');
 
-// OWASP A02: Hardcoded credentials (Critical Security Issue)
-const DB_PASSWORD = 'admin123';
-const JWT_SECRET = 'secret';
-const API_KEY = 'sk-prod-abc123xyz789';
+app.use(express.json());
 
-// OWASP A05: Security Misconfiguration
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: DB_PASSWORD,
-  database: 'users_db',
+// ============================
+// DATABASE
+// ============================
+
+mongoose.connect(process.env.MONGO_URL);
+
+const User = mongoose.model(
+  'User',
+
+  new mongoose.Schema({
+    username: String,
+
+    email: String,
+
+    password: String,
+
+    role: String,
+
+    isAdmin: Boolean,
+
+    profile: {
+      bio: String,
+    },
+  })
+);
+
+// ============================
+// REGISTER
+// ============================
+
+app.post('/register', async (req, res) => {
+  // MASS ASSIGNMENT BUG
+  // User can send:
+  // {
+  //  "isAdmin":true
+  // }
+
+  const user = await User.create(req.body);
+
+  res.json(user);
 });
 
-// OWASP A03: SQL Injection vulnerability
-app.get('/user', (req, res) => {
-  const userId = req.query.id;
-  const query = 'SELECT * FROM users WHERE id = ' + userId; // Direct string concat!
+// ============================
+// LOGIN
+// ============================
 
-  db.query(query, (err, results) => {
-    if (err) throw err; // Unhandled error - crashes server
-    res.send(results);
+app.post('/login', async (req, res) => {
+  const user = await User.findOne({
+    email: req.body.email,
+
+    password: req.body.password,
   });
-});
 
-// OWASP A01: Broken Access Control - no auth check
-app.delete('/admin/delete-all-users', (req, res) => {
-  db.query('DELETE FROM users', (err) => {
-    res.send('All users deleted'); // No auth, anyone can call this!
-  });
-});
+  // NOSQL INJECTION BUG
 
-// OWASP A07: Broken Authentication - weak password check
-function validatePassword(password) {
-  if (password == 'password') {
-    // == instead of ===, also hardcoded
-    return true;
-  }
-  return false;
-}
+  /*
 
-// Logic Bug: Infinite loop
-function getUserData(users) {
-  let i = 0;
-  while (i >= 0) {
-    // This never ends!
-    console.log(users[i]);
-    i++;
-  }
-}
+    attacker sends:
 
-// Logic Bug: Off-by-one error
-function getLastUser(users) {
-  return users[users.length]; // Should be users.length - 1
-}
-
-// Logic Bug: Wrong comparison operator
-function isAdmin(role) {
-  if ((role = 'admin')) {
-    // Assignment instead of comparison!
-    return true;
-  }
-  return false;
-}
-
-// Performance Issue: Nested loops O(n²)
-function findDuplicates(arr) {
-  let duplicates = [];
-  for (let i = 0; i < arr.length; i++) {
-    for (let j = 0; j < arr.length; j++) {
-      // Should start from i+1
-      if (i !== j && arr[i] === arr[j]) {
-        duplicates.push(arr[i]);
+    {
+      "email":{
+        "$ne":null
+      },
+      "password":{
+        "$ne":null
       }
     }
-  }
-  return duplicates;
-}
 
-// Performance Issue: Synchronous file read blocking event loop
-const fs = require('fs');
-app.get('/config', (req, res) => {
-  const config = fs.readFileSync('./config.json'); // Blocking!
-  res.send(config);
-});
 
-// OWASP A03: XSS vulnerability - directly injecting user input into HTML
-app.get('/greet', (req, res) => {
-  const name = req.query.name;
-  res.send(`<h1>Hello ${name}</h1>`); // No sanitization!
-});
+    query becomes:
 
-// Memory Leak: Event listener added inside function, never removed
-function setupListeners() {
-  setInterval(() => {
-    app.on('request', (req) => {
-      // New listener added every 1 second!
-      console.log(req.url);
-    });
-  }, 1000);
-}
+    email != null
+    password != null
 
-// OWASP A02: Sensitive data exposure in logs
-function loginUser(username, password) {
-  console.log(`Login attempt: username=${username}, password=${password}`); // Password in logs!
+    */
 
-  // Logic Bug: Returns undefined instead of false on failure
-  if (username === 'admin' && validatePassword(password)) {
-    return { success: true, token: JWT_SECRET }; // Returning secret!
-  }
-  // Missing return statement - returns undefined
-}
+  if (!user) return res.send('failed');
 
-// No rate limiting on login endpoint
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const result = loginUser(username, password);
+  const token = jwt.sign(
+    {
+      id: user._id,
+    },
 
-  if (result.success) {
-    // Will crash if result is undefined
-    res.json({ token: result.token });
-  }
-});
+    process.env.JWT_SECRET
+  );
 
-// OWASP A08: Insecure Deserialization
-app.post('/data', (req, res) => {
-  const data = eval(req.body.payload); // eval() is extremely dangerous!
-  res.json(data);
-});
-
-// Unused variables and dead code
-const unusedVar = 'this does nothing';
-const anotherUnused = [];
-
-function deadCode() {
-  return 'this function is never called';
-  console.log('unreachable code'); // After return statement
-}
-
-// Wrong async handling - callback hell + no error handling
-function fetchUserOrders(userId, callback) {
-  db.query(`SELECT * FROM orders WHERE user_id = ${userId}`, (err, orders) => {
-    db.query(
-      `SELECT * FROM products WHERE id = ${orders[0].product_id}`,
-      (err2, product) => {
-        db.query(
-          `SELECT * FROM reviews WHERE product_id = ${product[0].id}`,
-          (err3, reviews) => {
-            // err, err2, err3 are all ignored!
-            callback(reviews);
-          }
-        );
-      }
-    );
+  res.json({
+    token,
   });
-}
+});
 
-app.listen(3000);
+// ============================
+// SEARCH
+// ============================
+
+app.get('/search', async (req, res) => {
+  const keyword = req.query.q;
+
+  // REGEX DOS BUG
+
+  const users = await User.find({
+    username: new RegExp(keyword),
+  });
+
+  res.json(users);
+});
+
+// ============================
+// PROFILE UPDATE
+// ============================
+
+app.put(
+  '/profile/:id',
+
+  async (req, res) => {
+    // MASS UPDATE BUG
+
+    await User.findByIdAndUpdate(
+      req.params.id,
+
+      req.body
+    );
+
+    res.send('updated');
+  }
+);
+
+// ============================
+// FILE VIEW
+// ============================
+
+app.get('/file', (req, res) => {
+  const file = req.query.name;
+
+  // PATH TRAVERSAL BUG
+
+  fs.readFile(
+    './uploads/' + file,
+
+    (err, data) => {
+      res.send(data);
+    }
+  );
+});
+
+// ============================
+// SYSTEM COMMAND
+// ============================
+
+app.get('/ping', (req, res) => {
+  const ip = req.query.ip;
+
+  // COMMAND INJECTION
+
+  exec(
+    'ping ' + ip,
+
+    (err, result) => {
+      res.send(result);
+    }
+  );
+});
+
+// ============================
+// JWT VERIFY
+// ============================
+
+app.get('/admin', (req, res) => {
+  const token = req.headers.authorization;
+
+  // JWT handling bug
+
+  const data = jwt.decode(token);
+
+  if (data.role === 'admin') {
+    res.send('secret admin panel');
+  }
+});
+
+// ============================
+// HTML STORAGE
+// ============================
+
+app.post('/comment', async (req, res) => {
+  const comment = req.body.comment;
+
+  // STORED XSS BUG
+
+  await User.create({
+    username: comment,
+  });
+
+  res.send('saved');
+});
+
+// ============================
+// RAW QUERY STYLE BUG
+// ============================
+
+app.get('/report', async (req, res) => {
+  let id = req.query.id;
+
+  // BAD QUERY BUILDING
+
+  let query = `
+    SELECT *
+    FROM users
+    WHERE id=${id}
+    `;
+
+  console.log(query);
+
+  res.send(query);
+});
+
+// ============================
+// PROTOTYPE POLLUTION
+// ============================
+
+app.post('/settings', (req, res) => {
+  const settings = {};
+
+  Object.assign(
+    settings,
+
+    req.body
+  );
+
+  res.json(settings);
+});
+
+// ============================
+// ERROR
+// ============================
+
+app.use((err, req, res, next) => {
+  // INFORMATION LEAK
+
+  res.json({
+    error: err.stack,
+  });
+});
+
+app.listen(5000, () => {
+  console.log('server running');
+});

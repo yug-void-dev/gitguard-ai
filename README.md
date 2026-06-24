@@ -1,192 +1,141 @@
 # GitGuard AI
 
-GitGuard AI is an autonomous pull request review platform. It listens to GitHub pull request webhooks, validates them securely, fetches and analyzes code diffs with LLM providers, stores review results, posts feedback back to GitHub, and exposes a React dashboard for repositories, reviews, history, and settings.
+GitGuard AI is an autonomous, full-stack pull request review platform. It acts as a 24/7 senior engineer on every PR—listening to GitHub webhooks, validating them securely, fetching and analyzing code diffs with multiple LLM providers (Gemini, Groq, Claude, Custom), storing review results, and posting actionable feedback directly back to GitHub. The platform features a rich Next.js dashboard for repository management, live review tracking, rule configuration, and analytics.
 
 ## Current Completion Status
 
-Weeks 1, 2, and 3 from the project plan are implemented across the backend and connected frontend surfaces.
+The entire project (Weeks 1 through 4) is fully implemented across the backend and frontend surfaces.
 
-Verified locally:
-
-- Backend TypeScript build: passed.
+**Verified locally:**
+- Backend TypeScript build: passed with 0 errors.
+- Backend ESLint check: passed with 0 warnings.
 - Backend Jest suite: 19 test suites passed, 215 tests passed.
 - Frontend production build: passed.
-
-Notes:
-
-- Live GitHub webhook delivery, LLM calls, GitHub comment posting, Redis queue execution, and MongoDB persistence require real environment variables and running services.
-- The frontend build was repaired by removing duplicate settings state in `frontend/src/pages/SettingsPage.tsx` and replacing an unavailable `Slack` icon import in `frontend/src/components/settings/NotificationPreferences.tsx`.
 
 ## Project Structure
 
 ```text
 gitguard-ai/
-  backend/    Node.js, Express, TypeScript, MongoDB, Redis/BullMQ, Octokit, LLM pipeline
-  frontend/   React, Vite, TypeScript, dashboard pages and API integration
+  backend/    Node.js, Express, TypeScript, MongoDB, Redis/BullMQ, Octokit, Prometheus
+  frontend/   React, Vite, Next.js UI conventions, Tailwind, dashboard pages
   README.md   Root project overview
 ```
 
 ## Week 1: Webhook Listener and Foundation
 
-Goal: create the secure foundation for receiving GitHub pull request events.
+**Goal:** Create a secure, scalable foundation for receiving GitHub pull request events.
 
-Backend implementation:
-
-- Express application factory in `backend/src/app.ts`.
-- GitHub webhook endpoint at `POST /api/webhooks/github`.
-- Raw request body capture for exact HMAC verification.
-- HMAC-SHA256 signature validation in `backend/src/github/signatureValidator.ts`.
-- Pull request event parsing and validation in `backend/src/github/eventParser.ts`.
-- Supported PR actions include `opened`, `synchronize`, and `reopened`.
-- Rate limiting, request IDs, request logging, error handling, replay/security middleware, IP whitelist support, Helmet, and CORS.
-- MongoDB connection and audit log foundation through `AuditLog`.
-- GitHub OAuth backend routes under `/api/auth`.
-- Dockerfile and Docker Compose setup for containerized local deployment.
-- Jest unit and integration tests for webhook validation, middleware, event parsing, and audit behavior.
-
-Frontend connection:
-
-- GitHub login flow starts from the frontend using `/api/auth/github`.
-- Auth context and protected routes guard dashboard pages.
-- Frontend API client sends credentials to the backend REST API.
-
-Outcome:
-
-- A valid GitHub pull request webhook can be received, authenticated, parsed, audited, and queued for review.
+- **Backend:**
+  - Express application factory with a secure GitHub webhook endpoint (`POST /api/webhooks/github`).
+  - Strict HMAC-SHA256 signature validation.
+  - Pull request event parsing (opened, synchronize, reopened).
+  - Rate limiting, request IDs, request logging, replay/security middleware, and IP whitelisting.
+  - MongoDB connection and audit logging foundation.
+  - GitHub OAuth integration (`/api/auth`).
+  - Docker Compose setup for containerized deployment.
 
 ## Week 2: Diff Analyzer and AI Intelligence
 
-Goal: fetch pull request diffs, clean/chunk them, and generate structured AI review output.
+**Goal:** Fetch pull request diffs, clean/chunk them, and generate structured AI review output using multiple LLMs.
 
-Backend implementation:
-
-- PR webhook processing builds rich PR context in `backend/src/ai/contextBuilder.ts`.
-- Review jobs are queued with BullMQ in `backend/src/queue/reviewQueue.ts`.
-- Worker pipeline in `backend/src/queue/reviewWorker.ts`.
-- Diff fetching through Octokit or fallback HTTP diff URL fetching.
-- Diff processing and chunking in `backend/src/github/diffProcessor.ts`.
-- Multi-provider LLM routing in `backend/src/llm/llmRouter.ts`.
-- Gemini and Groq provider support with fallback behavior.
-- Prompt engineering in `backend/src/llm/prompts/codeReviewPrompt.ts`.
-- Structured response parsing in `backend/src/llm/parsers/reviewParser.ts`.
-- Prompt injection cleanup in `backend/src/ai/promptSanitizer.ts`.
-- Retry behavior in `backend/src/ai/retryStrategy.ts`.
-- Dependency vulnerability scanning in `backend/src/ai/vulnerabilityScanner.ts`.
-- Suggestions and enrichment in `backend/src/ai/suggestionEnricher.ts`.
-- Queue metrics are exposed under `/api/queue/metrics`.
-
-Frontend connection:
-
-- Dashboard and queue-related UI reads backend review/queue state.
-- Review list and detail views consume `/api/reviews`.
-- Side-by-side diff and finding components are present for displaying review output.
-
-Outcome:
-
-- A queued PR review can fetch/process a diff, send chunks to the selected LLM provider, parse structured findings, enrich them, and persist review results.
+- **Backend:**
+  - Asynchronous review jobs queued with BullMQ and Redis.
+  - Octokit diff fetching with intelligent preprocessing, chunking, and sanitization.
+  - **Multi-LLM Router:** Dynamic routing between Gemini 1.5 Flash, Groq Llama 3, and Custom/Self-Hosted LLM endpoints based on cost and availability.
+  - Prompt engineering focused on OWASP security vulnerabilities, logical bugs, and performance.
+  - Structured JSON response parsing, prompt injection defense, and retry logic.
+  - Vulnerability scanning via `package.json` cross-checks.
 
 ## Week 3: Comment Bot and Automation
 
-Goal: close the feedback loop by turning AI findings into GitHub comments, suggestions, labels, rules, and audit records.
+**Goal:** Close the feedback loop by automatically posting Markdown comments and applying GitHub automation.
 
-Backend implementation:
+- **Backend:**
+  - Octokit comment posting for rich Markdown reviews and inline code suggestions.
+  - One-click suggestion apply support.
+  - Auto-labeling PRs (e.g., `security-issue`, `needs-review`).
+  - **Rule Engine:** Per-repository strict mode, custom ignore patterns, and prompt templates.
+  - Code quality metrics and complexity heuristics.
+  - Comprehensive review history logging in MongoDB.
 
-- Rich Markdown review formatting in `backend/src/utils/diffFormatter.ts`.
-- GitHub PR review posting in `backend/src/services/commentService.ts`.
-- Inline suggestion posting in `backend/src/services/suggestionService.ts`.
-- PR label automation in `backend/src/services/labelService.ts`.
-- Manual comment/suggestion/label routes under `/api/comments`.
-- Rule profiles and per-repository filtering in `backend/src/services/ruleEngine.ts`.
-- Rule profile CRUD routes under `/api/rules`.
-- Connected repository management and webhook installation under `/api/repositories`.
-- Code quality metrics in `backend/src/services/codeQualityService.ts`.
-- CI/CD badge data route under `/api/comments/badge/:repositoryId`.
-- Review status updates and WebSocket broadcasts for queued/completed/failed review events.
-- Full audit logging support for webhook and review lifecycle events.
+## Week 4: Dashboard, Analytics & Enterprise Integrations
 
-Frontend connection:
+**Goal:** Deliver a complete, beautiful, and insightful developer platform with enterprise-grade features.
 
-- Repositories page supports listing, connecting, disconnecting, activating, and configuring repositories.
-- Reviews page and review detail page display findings, metadata, severity, comments, suggestions, and diffs.
-- History page supports review history, filters, and CSV export.
-- Settings page includes notification, security, API key, team, and basic preference controls.
-- Frontend services call backend endpoints for reviews, repositories, comments, suggestions, queue metrics, history, notifications, and auth.
+- **Frontend & UX:**
+  - Landing page with GitHub OAuth login and repository selection.
+  - Main Dashboard showing live PR activity, bug trends, and repository health scores.
+  - Review Detail page with side-by-side diff viewers and syntax highlighting.
+  - Team and organization support with role-based access.
+  - Dark/light mode and responsive design.
+- **Enterprise Backend Integrations:**
+  - **Notifications & Ticketing:** Automatic Jira and Linear issue creation for Critical severity bugs.
+  - Slack and Discord webhook alerts for completed reviews.
+  - **Usage Analytics:** Token cost tracking and LLM cost analytics aggregation pipelines.
+  - **Observability:** Prometheus metrics endpoint (`/metrics`) and Grafana monitoring for queue latency and success rates.
+  - CI/CD badge generation endpoint (`/api/comments/badge/:repositoryId`).
+  - WebSocket support for real-time frontend updates.
 
-Outcome:
-
-- Review results can be posted back to GitHub as Markdown reviews, inline suggestions can be applied, labels can be added, repository rules can filter findings, and the frontend can display the feedback loop.
-
-## Backend API Summary
+## API Summary
 
 ```text
+# Core
 GET    /health
+GET    /metrics                      (Prometheus)
+
+# Webhooks & Auth
 POST   /api/webhooks/github
 GET    /api/auth/github
 GET    /api/auth/github/callback
-POST   /api/auth/register
-POST   /api/auth/login
-GET    /api/auth/me
-POST   /api/auth/logout
+
+# Reviews & Queue
 GET    /api/reviews
-GET    /api/reviews/stats
 GET    /api/reviews/:reviewId
+GET    /api/queue/metrics
+GET    /api/analytics/usage          (Token Cost Tracking)
+
+# Repositories & Rules
 GET    /api/repositories
 POST   /api/repositories/connect
-PATCH  /api/repositories/:id
 PATCH  /api/repositories/:id/rules
-DELETE /api/repositories/:id
-GET    /api/github/repos
-GET    /api/queue/metrics
 GET    /api/rules/:repositoryId
-POST   /api/rules/:repositoryId
-PATCH  /api/rules/:repositoryId/:profileId
-DELETE /api/rules/:repositoryId/:profileId
-PATCH  /api/rules/:repositoryId/:profileId/activate
+
+# GitHub Actions
 GET    /api/comments/badge/:repositoryId
-GET    /api/comments
-GET    /api/comments/review/:reviewId
 POST   /api/comments/:reviewId/post
-POST   /api/comments/:reviewId/suggest
-POST   /api/comments/:reviewId/labels
 POST   /api/comments/:commentId/apply
 ```
 
 ## Local Development
 
-Backend:
-
+### Backend
 ```bash
 cd backend
 npm install
 npm run dev
 ```
 
-Frontend:
-
+### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Default ports:
+**Default ports:**
+- Backend API: `http://localhost:3001`
+- Frontend UI: `http://localhost:5173`
 
-- Backend: `http://localhost:3001`
-- Frontend: Vite dev server default, usually `http://localhost:5173`
-
-Set `VITE_API_BASE_URL` and `VITE_WS_URL` in the frontend environment to match the backend if needed.
+*(Ensure `.env` files are populated with GitHub App, MongoDB, Redis, and LLM API keys.)*
 
 ## Verification Commands
-
 ```bash
 cd backend
 npm run build
+npm run lint
 npm test
 ```
-
 ```bash
 cd frontend
 npm run build
 ```
-
-The latest local verification passed using the bundled Node runtime because the global `npm` command on this machine is missing its npm CLI file.

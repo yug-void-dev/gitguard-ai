@@ -10,6 +10,7 @@ export interface AuthResponse {
   success: boolean;
   user: User;
   message?: string;
+  token?: string;
 }
 
 export interface LoginCredentials {

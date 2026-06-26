@@ -7,7 +7,7 @@
  */
 
 import axios, { type AxiosError } from 'axios';
-import { API_BASE_URL } from '../constants/config';
+import { API_BASE_URL, STORAGE_KEYS } from '../constants/config';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -19,8 +19,16 @@ const api = axios.create({
 });
 
 // ─── Request interceptor ──────────────────────────────────────────────────────
+// Attach JWT from localStorage (set after GitHub OAuth or email/password login)
 api.interceptors.request.use(
-  (config) => config,
+  (config) => {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    if (token) {
+      config.headers = config.headers ?? {};
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
   (error) => Promise.reject(error),
 );
 

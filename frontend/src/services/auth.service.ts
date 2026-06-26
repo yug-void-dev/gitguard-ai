@@ -1,8 +1,13 @@
 import api from './api';
+import { STORAGE_KEYS } from '../constants/config';
 import type { LoginCredentials, RegisterCredentials, AuthResponse, User } from '../types/auth.types';
 
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   const { data } = await api.post<AuthResponse>('/auth/login', credentials);
+  // Persist JWT so subsequent API calls include Authorization header
+  if (data.token) {
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
+  }
   return data;
 };
 
@@ -13,6 +18,8 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
 
 export const logout = async (): Promise<void> => {
   await api.post('/auth/logout');
+  // Clear the stored JWT on logout
+  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
 export const getMe = async (): Promise<{ success: boolean; user: User }> => {

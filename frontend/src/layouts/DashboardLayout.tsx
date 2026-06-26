@@ -6,7 +6,7 @@
  * Locomotive Scroll v5 (Lenis) applied to the main content scroller.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Outlet, useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
@@ -15,7 +15,7 @@ import { STORAGE_KEYS } from '../constants/config';
 import { useTheme } from '../hooks/useTheme';
 import { useToast } from '../context/ToastContext';
 import { GlobalErrorBoundary } from '../components/common/GlobalErrorBoundary';
-
+import { AuthContext } from '../context/AuthContext';
 
 /**
  * DashboardLayout assembles the main application chrome:
@@ -30,7 +30,24 @@ const DashboardLayout: React.FC = () => {
   const { theme } = useTheme();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const authCtx = useContext(AuthContext);
 
+  // ── Capture JWT from GitHub OAuth redirect (?token=xxx&gh_login=1) ──────────
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      // Persist the token so all subsequent API calls include Authorization header
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      // Strip token from URL immediately (security + clean UX)
+      setSearchParams((prev) => {
+        prev.delete('token');
+        return prev;
+      }, { replace: true });
+      // Refresh user state so the app knows we are authenticated
+      authCtx?.checkAuth();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── GitHub OAuth arrival toast ──────────────────────────────────────────────
   useEffect(() => {

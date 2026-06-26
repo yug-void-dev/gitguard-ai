@@ -151,20 +151,14 @@ export const githubCallback = async (
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
     });
 
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
     logger.info(
       { userId: user._id, login: user.login },
       'User authenticated successfully',
     );
     const firstOrigin = env.ALLOWED_ORIGINS.split(',')[0].trim();
-    // Append gh_login=1 so the frontend can detect a GitHub OAuth arrival and show a toast
-    res.redirect(`${firstOrigin}/dashboard?gh_login=1`);
+    // Pass token as URL param so the frontend (on a different domain) can capture it
+    // and store it in localStorage — avoids cross-origin httpOnly cookie restrictions.
+    res.redirect(`${firstOrigin}/dashboard?token=${token}&gh_login=1`);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logger.error({ error }, 'GitHub OAuth Callback failed');

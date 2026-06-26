@@ -91,6 +91,10 @@ export function createApp(): Application {
   // applied at the route level. We intentionally do NOT apply
   // express.json() globally here to preserve req.rawBody integrity.
 
+  app.get('/', (_req, res) => {
+    res.status(200).json({ status: 'ok', message: 'GitGuard AI Backend is running' });
+  });
+
   app.use('/health', healthRoutes);
 
   // Prometheus Metrics endpoint

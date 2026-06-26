@@ -54,8 +54,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // On mobile: sidebar is always "expanded" width but hides off-screen via translateX
   const mobileVariants = {
-    open:   { x: 0,    transition: { type: 'spring', stiffness: 340, damping: 34 } },
-    closed: { x: '-100%', transition: { type: 'spring', stiffness: 340, damping: 34 } },
+    open:   { x: 0,    transition: { type: 'spring' as const, stiffness: 340, damping: 34 } },
+    closed: { x: '-100%', transition: { type: 'spring' as const, stiffness: 340, damping: 34 } },
   };
 
   const sidebarBg = isLight

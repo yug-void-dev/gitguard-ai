@@ -510,7 +510,7 @@ input::placeholder {
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .gg-root { flex-direction: column; overflow: auto; min-height: 100svh; }
-  .gg-left { flex: none; height: 52vh; min-height: 300px; }
+  .gg-left { flex: none; height: 52vh; min-height: 260px; }
   .gg-left-edge {
     right: auto;
     bottom: 0;
@@ -525,10 +525,25 @@ input::placeholder {
   .gg-right { width: 100%; min-width: unset; border-left: none; border-top: 1px solid var(--border); }
   .gg-panel { padding: 28px 22px; max-width: 100%; }
 }
+
+@media (max-width: 640px) {
+  .gg-left { height: 42vh; min-height: 220px; }
+  .gg-left-body { padding: 16px 18px 14px; }
+  .gg-hero h2 { font-size: clamp(18px, 6vw, 26px); }
+  .gg-panel { padding: 20px 16px; }
+  .switch-btn { padding: 0.75rem 1rem; font-size: 0.95rem; }
+  .submit-btn { padding: 1rem 1.5rem; font-size: 0.95rem; }
+  .gym-input { padding: 1rem 1rem 1rem 2.5rem; font-size: 0.9rem; }
+}
+
 @media (max-width: 480px) {
-  .gg-left { height: 44vh; }
+  .gg-left { height: 36vh; min-height: 180px; }
   .gg-hero p { display: none; }
-  .gg-head h1 { font-size: 22px; }
+  .gg-head h1 { font-size: 20px; }
   .gg-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .gg-stat-v { font-size: 18px; }
+  .gg-stat-v { font-size: 16px; }
+  .gg-stat { padding: 8px 12px; }
+  .gg-panel { padding: 16px 14px; }
+  .switch-btn { padding: 0.65rem 0.75rem; font-size: 0.85rem; letter-spacing: 0.5px; }
+  .submit-btn { margin-top: 1rem; padding: 0.9rem 1rem; font-size: 0.9rem; letter-spacing: 1px; }
 }

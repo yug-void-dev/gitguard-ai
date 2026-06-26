@@ -22,6 +22,7 @@ import {
   GitPullRequest,
   Trash2,
   X,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
@@ -187,8 +188,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         height: 60,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end', // no left hamburger — sidebar owns toggle
-        padding: '0 20px',
+        justifyContent: 'space-between',
+        padding: '0 16px',
         borderBottom: `1px solid ${T.border}`,
         background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(6,7,20,0.82)',
         backdropFilter: 'blur(14px)',
@@ -199,6 +200,33 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         gap: 10,
       }}
     >
+      {/* ── Hamburger (mobile only — hidden on desktop via CSS) ── */}
+      <motion.button
+        className="navbar-hamburger"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        onClick={_onMenuClick}
+        title="Open menu"
+        style={{
+          display: 'none', // shown on mobile via .navbar-hamburger CSS class
+          background: 'rgba(99,102,241,0.08)',
+          border: `1px solid rgba(99,102,241,0.22)`,
+          borderRadius: 10,
+          color: '#94a3b8',
+          cursor: 'pointer',
+          width: 38,
+          height: 38,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <Menu size={18} />
+      </motion.button>
+
+      {/* ── Spacer — pushes bell+avatar to right on desktop ── */}
+      <div style={{ flex: 1 }} />
+
       {/* ── Notification bell ── */}
       <div ref={notifRef} style={{ position: 'relative' }}>
         <motion.button
@@ -255,6 +283,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         <AnimatePresence>
           {notifOpen && (
             <motion.div
+              className="notif-dropdown"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -264,6 +293,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 top: 'calc(100% + 10px)',
                 right: 0,
                 width: 360,
+                maxWidth: 'calc(100vw - 16px)',
                 maxHeight: 480,
                 background: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(9,10,26,0.98)',
                 border: `1px solid ${T.border}`,
@@ -551,19 +581,23 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)'; }}
         >
           <Avatar src={user?.avatarUrl} name={user?.login ?? 'User'} size={28} />
-          <span style={{
-            fontFamily: 'var(--font-body,Inter)',
-            fontSize: 13,
-            fontWeight: 500,
-            color: T.text,
-            maxWidth: 100,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
+          <span
+            className="navbar-username"
+            style={{
+              fontFamily: 'var(--font-body,Inter)',
+              fontSize: 13,
+              fontWeight: 500,
+              color: T.text,
+              maxWidth: 100,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {user?.login ?? 'User'}
           </span>
           <ChevronDown
+            className="navbar-chevron"
             size={13}
             color={T.sub}
             style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
@@ -574,6 +608,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         <AnimatePresence>
           {dropdownOpen && (
             <motion.div
+              className="user-dropdown"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -583,6 +618,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 top: 'calc(100% + 8px)',
                 right: 0,
                 minWidth: 190,
+                maxWidth: 'calc(100vw - 16px)',
                 background: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(9,10,26,0.98)',
                 border: `1px solid ${T.border}`,
                 borderRadius: 12,

@@ -208,7 +208,7 @@ const ReviewCard: React.FC<{
           style={{
             marginTop: 18,
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(90px, 100%), 1fr))',
             gap: 8,
             padding: '10px',
             borderRadius: 10,
@@ -436,7 +436,7 @@ const ReviewsPage: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
             gap: 12,
             marginBottom: 28,
           }}
@@ -465,7 +465,7 @@ const ReviewsPage: React.FC = () => {
         </div>
 
         {/* Two column dashboard body layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
           
           {/* Main List Section */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -562,7 +562,7 @@ const ReviewsPage: React.FC = () => {
                   exit={{ opacity: 0 }}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
                     gap: 16,
                   }}
                 >
@@ -632,7 +632,7 @@ const ReviewsPage: React.FC = () => {
                   exit={{ opacity: 0 }}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
                     gap: 16,
                   }}
                 >

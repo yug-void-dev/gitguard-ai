@@ -40,7 +40,7 @@ const ReviewSummary: React.FC<ReviewSummaryProps> = ({ review }) => {
       }}
     >
       {/* Metrics row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: 12 }}>
         <MetricTile
           icon={<Gauge size={16} color={scoreColor} />}
           label="Quality Score"

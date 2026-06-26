@@ -3,7 +3,7 @@
  * @description Shell layout for all protected dashboard routes.
  * Composes: Sidebar (left) + vertical content area (Navbar top + <Outlet>).
  * Sidebar collapse/expand uses a silky spring transition.
- * Locomotive Scroll v5 (Lenis) applied to the main content scroller.
+ * On mobile (≤768px) the sidebar becomes a full-height overlay drawer.
  */
 
 import React, { useState, useEffect, useContext } from 'react';
@@ -17,15 +17,6 @@ import { useToast } from '../context/ToastContext';
 import { GlobalErrorBoundary } from '../components/common/GlobalErrorBoundary';
 import { AuthContext } from '../context/AuthContext';
 
-/**
- * DashboardLayout assembles the main application chrome:
- *
- *  ┌──────────┬────────────────────────────┐
- *  │          │  Navbar                    │
- *  │ Sidebar  ├────────────────────────────┤
- *  │          │  <Outlet> (page content)   │
- *  └──────────┴────────────────────────────┘
- */
 const DashboardLayout: React.FC = () => {
   const { theme } = useTheme();
   const toast = useToast();
@@ -36,14 +27,11 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
     const token = searchParams.get('token');
     if (token) {
-      // Persist the token so all subsequent API calls include Authorization header
       localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-      // Strip token from URL immediately (security + clean UX)
       setSearchParams((prev) => {
         prev.delete('token');
         return prev;
       }, { replace: true });
-      // Refresh user state so the app knows we are authenticated
       authCtx?.checkAuth();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,7 +40,6 @@ const DashboardLayout: React.FC = () => {
   // ── GitHub OAuth arrival toast ──────────────────────────────────────────────
   useEffect(() => {
     if (searchParams.get('gh_login') === '1') {
-      // Small delay so the dashboard finishes mounting before the toast appears
       const t = setTimeout(() => {
         toast.success(
           '🔐 GitHub Authorization Successful',
@@ -61,7 +48,6 @@ const DashboardLayout: React.FC = () => {
         );
       }, 600);
 
-      // Strip the query param so a refresh doesn't retrigger the toast
       setSearchParams((prev) => {
         prev.delete('gh_login');
         return prev;
@@ -72,6 +58,7 @@ const DashboardLayout: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Desktop sidebar collapsed state (persisted) ─────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';
@@ -80,7 +67,6 @@ const DashboardLayout: React.FC = () => {
     }
   });
 
-  // Persist sidebar state
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(sidebarCollapsed));
@@ -89,15 +75,37 @@ const DashboardLayout: React.FC = () => {
     }
   }, [sidebarCollapsed]);
 
+  // ── Mobile detection + mobile drawer open state ─────────────────────────────
+  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth <= 768);
+  const [mobileOpen, setMobileOpen] = useState<boolean>(false);
 
+  useEffect(() => {
+    const onResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      // Close drawer when viewport grows back to desktop
+      if (!mobile) setMobileOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
-  const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
+  // ── Unified toggle: hamburger on mobile opens drawer; desktop collapses sidebar
+  const toggleSidebar = () => {
+    if (isMobile) {
+      setMobileOpen((v) => !v);
+    } else {
+      setSidebarCollapsed((prev) => !prev);
+    }
+  };
+
+  const closeMobileDrawer = () => setMobileOpen(false);
 
   return (
     <div
       style={{
         display: 'flex',
-        height: '100vh',
+        height: '100dvh',
         width: '100vw',
         background: 'var(--bg-deep)',
         fontFamily: 'var(--font-body)',
@@ -105,14 +113,30 @@ const DashboardLayout: React.FC = () => {
         position: 'relative',
       }}
     >
-      {/* ── Global ambient background (bubbles + glows) rendered once for all pages ── */}
+      {/* ── Global ambient background ── */}
       <AppBackground />
 
-      {/* ── Sidebar ── */}
-      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      {/* ── Mobile backdrop overlay (closes drawer on tap) ── */}
+      {isMobile && (
+        <div
+          className={`sidebar-backdrop${mobileOpen ? ' visible' : ''}`}
+          onClick={closeMobileDrawer}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* ── Main column ── */}
+      {/* ── Sidebar ── */}
+      <Sidebar
+        collapsed={isMobile ? false : sidebarCollapsed}
+        onToggle={toggleSidebar}
+        isMobile={isMobile}
+        mobileOpen={mobileOpen}
+        onMobileClose={closeMobileDrawer}
+      />
+
+      {/* ── Main column — always full-width on mobile ── */}
       <div
+        className="dashboard-content-area"
         style={{
           flex: 1,
           display: 'flex',
@@ -132,7 +156,7 @@ const DashboardLayout: React.FC = () => {
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',
-            padding: '24px 28px',
+            padding: 'var(--page-padding-y) var(--page-padding-x)',
             position: 'relative',
           }}
         >

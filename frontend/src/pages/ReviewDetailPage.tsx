@@ -588,7 +588,7 @@ const ReviewDetailPage: React.FC = () => {
         {/* ─── Metrics Cards Grid ───────────────────────────────────────────── */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
           gap: 16,
         }}>
           {[
@@ -652,10 +652,10 @@ const ReviewDetailPage: React.FC = () => {
         </div>
 
         {/* ─── Main Details Section ───────────────────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20 }}>
+        <div className="review-detail-grid">
 
           {/* Main Area */}
-          <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
 
             {/* Overview / Summary */}
             <motion.section

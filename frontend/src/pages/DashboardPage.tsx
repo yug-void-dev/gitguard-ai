@@ -135,14 +135,14 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
         style={{ zIndex: 1, position: 'relative' }}
       >
         {/* Greeting */}
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 24 }} className="dashboard-greeting">
           <motion.h1
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
             style={{
               fontFamily: "'Inter',sans-serif",
-              fontSize: 24,
+              fontSize: 'clamp(18px, 4vw, 24px)',
               fontWeight: 800,
               color: T.text,
               letterSpacing: '-0.5px',
@@ -237,7 +237,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
                   gap: 14,
                   marginBottom: 24,
                 }}
@@ -258,7 +258,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
                     gap: 12,
                   }}
                 >
@@ -297,7 +297,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
                   gap: 18,
                   marginBottom: 18,
                 }}
@@ -474,7 +474,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
                   gap: 16,
                   marginBottom: 16,
                 }}
@@ -570,7 +570,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
                   gap: 16,
                   marginBottom: 16,
                 }}

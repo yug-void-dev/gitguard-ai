@@ -156,9 +156,11 @@ export const githubCallback = async (
       'User authenticated successfully',
     );
     const firstOrigin = env.ALLOWED_ORIGINS.split(',')[0].trim();
-    // Pass token as URL param so the frontend (on a different domain) can capture it
-    // and store it in localStorage — avoids cross-origin httpOnly cookie restrictions.
-    res.redirect(`${firstOrigin}/dashboard?token=${token}&gh_login=1`);
+    // Redirect to the dedicated OAuth callback page (PUBLIC route) so the
+    // token can be stored in localStorage BEFORE ProtectedRoute renders.
+    // Previously redirected to /dashboard directly, which caused a race-condition
+    // where ProtectedRoute redirected back to login before the token was captured.
+    res.redirect(`${firstOrigin}/auth/callback?token=${token}&gh_login=1`);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logger.error({ error }, 'GitHub OAuth Callback failed');

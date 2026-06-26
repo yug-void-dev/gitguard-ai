@@ -32,6 +32,7 @@ export function getRedisConnection(): IORedis {
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,
       password: env.REDIS_PASSWORD || undefined,
+      tls: env.REDIS_HOST !== 'localhost' && env.REDIS_HOST !== '127.0.0.1' ? {} : undefined,
       maxRetriesPerRequest: null, // Required by BullMQ
       enableReadyCheck: false, // Required by BullMQ
       lazyConnect: false,

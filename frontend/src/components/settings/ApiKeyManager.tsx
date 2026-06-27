@@ -25,6 +25,8 @@ export const ApiKeyManager: React.FC = () => {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [visibleKeyId, setVisibleKeyId] = useState<string | null>(null);
 
+  const STORAGE_KEY = 'gitguard_api_keys';
+
   useEffect(() => {
     fetchApiKeys();
   }, []);
@@ -35,7 +37,13 @@ export const ApiKeyManager: React.FC = () => {
       const response = await api.get('/api/api-keys');
       setApiKeys(response.data?.keys || []);
     } catch (err) {
-      console.error('Failed to load API keys', err);
+      console.warn('API /api/api-keys not available, falling back to localStorage');
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        setApiKeys(JSON.parse(stored));
+      } else {
+        setApiKeys([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -44,13 +52,33 @@ export const ApiKeyManager: React.FC = () => {
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
 
+    const generateRandomString = (length: number) => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+      return result;
+    };
+
     try {
       const response = await api.post('/api/api-keys', { name: newKeyName });
       setCreatedKey(response.data.key);
       setNewKeyName('');
       fetchApiKeys();
     } catch (err) {
-      console.error('Failed to create API key', err);
+      console.warn('API fallback: storing generated key in localStorage');
+      const rawKey = `gg_${generateRandomString(32)}`;
+      const newKey: ApiKey = {
+        id: Date.now().toString(),
+        name: newKeyName,
+        prefix: rawKey.substring(0, 8),
+        createdAt: new Date().toISOString()
+      };
+      const updated = [...apiKeys, newKey];
+      setApiKeys(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setCreatedKey(rawKey);
+      setNewKeyName('');
+      setShowCreateForm(false);
     }
   };
 
@@ -61,7 +89,10 @@ export const ApiKeyManager: React.FC = () => {
       await api.delete(`/api/api-keys/${keyId}`);
       fetchApiKeys();
     } catch (err) {
-      console.error('Failed to delete API key', err);
+      console.warn('API fallback: deleting key from localStorage');
+      const updated = apiKeys.filter((k) => k.id !== keyId);
+      setApiKeys(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
   };
 

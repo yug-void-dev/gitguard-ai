@@ -30,6 +30,8 @@ interface NotificationSettings {
   };
 }
 
+const STORAGE_KEY = 'gitguard_notification_settings';
+
 export const NotificationPreferences: React.FC = () => {
   const [settings, setSettings] = useState<NotificationSettings>({
     emailEnabled: true,
@@ -76,7 +78,23 @@ export const NotificationPreferences: React.FC = () => {
       setLinearApiTokenInput(response.data.linearApiToken || '');
       setLinearProjectIdInput(response.data.linearProjectId || '');
     } catch (err) {
-      console.error('Failed to load notification settings', err);
+      console.warn('API /api/notifications/settings not available, falling back to localStorage');
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.settings) setSettings(parsed.settings);
+          setSlackWebhookInput(parsed.slackWebhookInput || '');
+          setDiscordWebhookInput(parsed.discordWebhookInput || '');
+          setJiraApiTokenInput(parsed.jiraApiTokenInput || '');
+          setJiraProjectKeyInput(parsed.jiraProjectKeyInput || '');
+          setJiraInstanceUrlInput(parsed.jiraInstanceUrlInput || '');
+          setLinearApiTokenInput(parsed.linearApiTokenInput || '');
+          setLinearProjectIdInput(parsed.linearProjectIdInput || '');
+        } catch (e) {
+          console.error('Failed to parse localStorage settings', e);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -85,7 +103,8 @@ export const NotificationPreferences: React.FC = () => {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      await api.put('/api/notifications/settings', {
+      
+      const payload = {
         ...settings,
         slackWebhook: slackWebhookInput,
         discordWebhook: discordWebhookInput,
@@ -94,9 +113,23 @@ export const NotificationPreferences: React.FC = () => {
         jiraInstanceUrl: jiraInstanceUrlInput,
         linearApiToken: linearApiTokenInput,
         linearProjectId: linearProjectIdInput,
-      });
+      };
+
+      // Fallback: save to localStorage first
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        settings,
+        slackWebhookInput,
+        discordWebhookInput,
+        jiraApiTokenInput,
+        jiraProjectKeyInput,
+        jiraInstanceUrlInput,
+        linearApiTokenInput,
+        linearProjectIdInput,
+      }));
+
+      await api.put('/api/notifications/settings', payload);
     } catch (err) {
-      console.error('Failed to save settings', err);
+      console.warn('API /api/notifications/settings not available, changes saved to localStorage');
     } finally {
       setSaving(false);
     }

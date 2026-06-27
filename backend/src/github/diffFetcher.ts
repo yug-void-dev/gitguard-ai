@@ -4,7 +4,12 @@
  */
 
 import { Octokit } from '@octokit/rest';
-import { createOctokitClient, fetchRawDiff, fetchPRFiles, PullRequestFile } from './octokitClient';
+import {
+  createOctokitClient,
+  fetchRawDiff,
+  fetchPRFiles,
+  PullRequestFile,
+} from './octokitClient';
 import { withRetry } from '../ai/retryStrategy';
 import { logger } from '../lib/logger';
 
@@ -34,15 +39,23 @@ export async function fetchDiff(
   log.info('Starting PR diff fetch');
 
   const [rawDiff, files] = await withRetry(
-    async () => Promise.all([
-      fetchRawDiff(octokit, owner, repo, prNumber),
-      fetchPRFiles(octokit, owner, repo, prNumber),
-    ]),
+    async () =>
+      Promise.all([
+        fetchRawDiff(octokit, owner, repo, prNumber),
+        fetchPRFiles(octokit, owner, repo, prNumber),
+      ]),
     { maxAttempts: 3, baseDelayMs: 500, label: 'octokit-diff-fetch' },
     eventId,
   );
 
   log.info({ diffBytes: rawDiff.length, fileCount: files.length }, 'Diff fetch complete');
 
-  return { rawDiff, files, owner, repo, prNumber, diffBytes: Buffer.byteLength(rawDiff, 'utf8') };
+  return {
+    rawDiff,
+    files,
+    owner,
+    repo,
+    prNumber,
+    diffBytes: Buffer.byteLength(rawDiff, 'utf8'),
+  };
 }

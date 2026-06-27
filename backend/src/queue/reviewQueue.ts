@@ -104,4 +104,3 @@ export async function closeReviewQueue(): Promise<void> {
     logger.info({ queue: REVIEW_QUEUE_NAME }, 'BullMQ queue connection closed');
   }
 }
-

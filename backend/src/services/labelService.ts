@@ -22,7 +22,7 @@ import { logger } from '../lib/logger';
 
 export interface LabelDefinition {
   name: string;
-  color: string;   // Hex without #
+  color: string; // Hex without #
   description: string;
 }
 
@@ -104,7 +104,9 @@ export async function applyPRLabels(
   if (labelsToApply.length > 0) {
     try {
       await octokit.rest.issues.addLabels({
-        owner, repo, issue_number: prNumber,
+        owner,
+        repo,
+        issue_number: prNumber,
         labels: labelsToApply,
       });
       log.info({ labelsApplied: labelsToApply }, 'Labels applied to PR');
@@ -118,7 +120,10 @@ export async function applyPRLabels(
   for (const label of labelsToRemove) {
     try {
       await octokit.rest.issues.removeLabel({
-        owner, repo, issue_number: prNumber, name: label,
+        owner,
+        repo,
+        issue_number: prNumber,
+        name: label,
       });
       removedLabels.push(label);
     } catch {
@@ -144,17 +149,22 @@ function computeLabels(findings: IFinding[]): string[] {
   // Always mark as AI-reviewed
   labels.push('ai-reviewed');
 
-  const hasCritical   = findings.some((f) => f.severity === 'critical');
-  const hasHigh       = findings.some((f) => f.severity === 'high');
-  const hasSecurity   = findings.some((f) => f.severity === 'critical' || f.severity === 'high');
-  const hasPerf       = findings.some((f) => f.message.toLowerCase().includes('performance') ||
-                                              f.message.toLowerCase().includes('n+1') ||
-                                              f.message.toLowerCase().includes('memory'));
+  const hasCritical = findings.some((f) => f.severity === 'critical');
+  const hasHigh = findings.some((f) => f.severity === 'high');
+  const hasSecurity = findings.some(
+    (f) => f.severity === 'critical' || f.severity === 'high',
+  );
+  const hasPerf = findings.some(
+    (f) =>
+      f.message.toLowerCase().includes('performance') ||
+      f.message.toLowerCase().includes('n+1') ||
+      f.message.toLowerCase().includes('memory'),
+  );
 
-  if (hasCritical)    labels.push('critical-bug');
-  if (hasSecurity)    labels.push('security-issue');
-  if (hasHigh)        labels.push('needs-review');
-  if (hasPerf)        labels.push('performance-issue');
+  if (hasCritical) labels.push('critical-bug');
+  if (hasSecurity) labels.push('security-issue');
+  if (hasHigh) labels.push('needs-review');
+  if (hasPerf) labels.push('performance-issue');
 
   // Clean PR — no critical or high issues
   if (!hasCritical && !hasHigh) {
@@ -171,7 +181,10 @@ function computeLabels(findings: IFinding[]): string[] {
 function computeLabelsToRemove(labelsToApply: string[]): string[] {
   const toRemove: string[] = [];
 
-  if (labelsToApply.includes('security-issue') || labelsToApply.includes('critical-bug')) {
+  if (
+    labelsToApply.includes('security-issue') ||
+    labelsToApply.includes('critical-bug')
+  ) {
     toRemove.push('approved-by-ai');
   }
   if (labelsToApply.includes('approved-by-ai')) {
@@ -191,7 +204,7 @@ async function ensureLabelsExist(
   owner: string,
   repo: string,
   labels: string[],
-  log: Pick<ReturnType<typeof logger.child>, 'info'|'warn'|'error'|'debug'>,
+  log: Pick<ReturnType<typeof logger.child>, 'info' | 'warn' | 'error' | 'debug'>,
 ): Promise<string[]> {
   const created: string[] = [];
 
@@ -201,7 +214,8 @@ async function ensureLabelsExist(
 
     try {
       await octokit.rest.issues.createLabel({
-        owner, repo,
+        owner,
+        repo,
         name: def.name,
         color: def.color,
         description: def.description,

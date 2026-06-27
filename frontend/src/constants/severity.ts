@@ -4,13 +4,14 @@
  * Single source of truth for anything severity-related across the app.
  */
 
-export type SeverityLevel = 'high' | 'medium' | 'low' | 'info';
+export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
 /** Ordered from most critical to least critical. */
-export const SEVERITY_LEVELS: SeverityLevel[] = ['high', 'medium', 'low', 'info'];
+export const SEVERITY_LEVELS: SeverityLevel[] = ['critical', 'high', 'medium', 'low', 'info'];
 
 /** Human-readable label for each severity. */
 export const SEVERITY_LABELS: Record<SeverityLevel, string> = {
+  critical: 'Critical',
   high: 'High',
   medium: 'Medium',
   low: 'Low',
@@ -22,6 +23,7 @@ export const SEVERITY_LABELS: Record<SeverityLevel, string> = {
  * Used by SeverityTag, FindingCard, Badge, etc.
  */
 export const SEVERITY_TEXT_CLASSES: Record<SeverityLevel, string> = {
+  critical: 'text-rose-400 font-bold',
   high: 'text-red-400',
   medium: 'text-amber-400',
   low: 'text-sky-400',
@@ -33,6 +35,7 @@ export const SEVERITY_TEXT_CLASSES: Record<SeverityLevel, string> = {
  * Used by SeverityTag chips and badges.
  */
 export const SEVERITY_BG_CLASSES: Record<SeverityLevel, string> = {
+  critical: 'bg-rose-500/10 border-rose-500/30',
   high: 'bg-red-500/10 border-red-500/30',
   medium: 'bg-amber-500/10 border-amber-500/30',
   low: 'bg-sky-500/10 border-sky-500/30',
@@ -41,6 +44,7 @@ export const SEVERITY_BG_CLASSES: Record<SeverityLevel, string> = {
 
 /** Raw hex colours — used by Recharts or canvas-based charts. */
 export const SEVERITY_HEX: Record<SeverityLevel, string> = {
+  critical: '#fb7185', // rose-400
   high: '#f87171',    // red-400
   medium: '#fbbf24',  // amber-400
   low: '#38bdf8',     // sky-400
@@ -49,6 +53,7 @@ export const SEVERITY_HEX: Record<SeverityLevel, string> = {
 
 /** Numeric priority weight (lower = more critical). */
 export const SEVERITY_WEIGHT: Record<SeverityLevel, number> = {
+  critical: 0,
   high: 1,
   medium: 2,
   low: 3,

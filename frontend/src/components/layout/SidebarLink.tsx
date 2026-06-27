@@ -15,6 +15,7 @@ interface SidebarLinkProps {
   label: string;
   collapsed: boolean;
   badge?: number;
+  onClick?: () => void;
 }
 
 const SidebarLink: React.FC<SidebarLinkProps> = ({
@@ -23,11 +24,12 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({
   label,
   collapsed,
   badge,
+  onClick,
 }) => {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <NavLink to={to} title={collapsed ? label : undefined} style={{ textDecoration: 'none', display: 'block' }}>
+    <NavLink to={to} title={collapsed ? label : undefined} style={{ textDecoration: 'none', display: 'block' }} onClick={onClick}>
       {({ isActive }) => (
         <motion.div
           onHoverStart={() => setHovered(true)}

@@ -11,14 +11,18 @@ jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => ({
     rest: {
       pulls: {
-        get:       mockGetPulls,
+        get: mockGetPulls,
         listFiles: mockListFiles,
       },
     },
   })),
 }));
 
-import { createOctokitClient, fetchRawDiff, fetchPRFiles } from '../../../src/github/octokitClient';
+import {
+  createOctokitClient,
+  fetchRawDiff,
+  fetchPRFiles,
+} from '../../../src/github/octokitClient';
 
 const SAMPLE_DIFF = `diff --git a/src/index.ts b/src/index.ts
 index abc..def 100644
@@ -39,7 +43,9 @@ describe('createOctokitClient', () => {
 });
 
 describe('fetchRawDiff', () => {
-  beforeEach(() => { mockGetPulls.mockClear(); });
+  beforeEach(() => {
+    mockGetPulls.mockClear();
+  });
 
   it('should return the raw diff string', async () => {
     mockGetPulls.mockResolvedValue({ data: SAMPLE_DIFF });
@@ -53,7 +59,9 @@ describe('fetchRawDiff', () => {
     const client = createOctokitClient('token');
     await fetchRawDiff(client, 'owner', 'repo', 42);
     expect(mockGetPulls).toHaveBeenCalledWith({
-      owner: 'owner', repo: 'repo', pull_number: 42,
+      owner: 'owner',
+      repo: 'repo',
+      pull_number: 42,
       mediaType: { format: 'diff' },
     });
   });
@@ -61,24 +69,43 @@ describe('fetchRawDiff', () => {
   it('should throw when response data is null', async () => {
     mockGetPulls.mockResolvedValue({ data: null });
     const client = createOctokitClient('token');
-    await expect(fetchRawDiff(client, 'owner', 'repo', 1)).rejects.toThrow('No diff returned');
+    await expect(fetchRawDiff(client, 'owner', 'repo', 1)).rejects.toThrow(
+      'No diff returned',
+    );
   });
 
   it('should throw when response data is an object (wrong media type)', async () => {
     mockGetPulls.mockResolvedValue({ data: { id: 1, number: 1 } });
     const client = createOctokitClient('token');
-    await expect(fetchRawDiff(client, 'owner', 'repo', 1)).rejects.toThrow('No diff returned');
+    await expect(fetchRawDiff(client, 'owner', 'repo', 1)).rejects.toThrow(
+      'No diff returned',
+    );
   });
 });
 
 describe('fetchPRFiles', () => {
-  beforeEach(() => { mockListFiles.mockClear(); });
+  beforeEach(() => {
+    mockListFiles.mockClear();
+  });
 
   it('should return mapped file list', async () => {
     mockListFiles.mockResolvedValue({
       data: [
-        { filename: 'src/auth.ts', status: 'modified', additions: 20, deletions: 5, changes: 25, patch: '+jwt.sign()' },
-        { filename: 'src/user.ts', status: 'added',    additions: 50, deletions: 0, changes: 50 },
+        {
+          filename: 'src/auth.ts',
+          status: 'modified',
+          additions: 20,
+          deletions: 5,
+          changes: 25,
+          patch: '+jwt.sign()',
+        },
+        {
+          filename: 'src/user.ts',
+          status: 'added',
+          additions: 50,
+          deletions: 0,
+          changes: 50,
+        },
       ],
     });
     const client = createOctokitClient('token');
@@ -96,6 +123,11 @@ describe('fetchPRFiles', () => {
     mockListFiles.mockResolvedValue({ data: [] });
     const client = createOctokitClient('token');
     await fetchPRFiles(client, 'owner', 'repo', 7);
-    expect(mockListFiles).toHaveBeenCalledWith({ owner: 'owner', repo: 'repo', pull_number: 7, per_page: 100 });
+    expect(mockListFiles).toHaveBeenCalledWith({
+      owner: 'owner',
+      repo: 'repo',
+      pull_number: 7,
+      per_page: 100,
+    });
   });
 });

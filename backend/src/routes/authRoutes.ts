@@ -45,4 +45,22 @@ router.get('/me', protect, authController.getMe);
  */
 router.post('/logout', authController.logout);
 
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset OTP
+ */
+router.post('/forgot-password', authController.forgotPassword);
+
+/**
+ * @route   POST /api/auth/verify-otp
+ * @desc    Verify password reset OTP
+ */
+router.post('/verify-otp', authController.verifyOtp);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password using OTP
+ */
+router.post('/reset-password', authController.resetPassword);
+
 export default router;

@@ -32,18 +32,17 @@ function containsNullByte(value: string): boolean {
  * Validates webhook headers for sanity.
  * Rejects oversized or null-byte-containing header values.
  */
-export function sanitizeHeaders(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function sanitizeHeaders(req: Request, res: Response, next: NextFunction): void {
   for (const header of INSPECTED_HEADERS) {
     const value = req.headers[header];
     if (!value) continue;
     const str = Array.isArray(value) ? value.join(',') : value;
 
     if (str.length > MAX_HEADER_LENGTH) {
-      logger.warn({ requestId: req.id, header, length: str.length }, 'Oversized header rejected');
+      logger.warn(
+        { requestId: req.id, header, length: str.length },
+        'Oversized header rejected',
+      );
       res.status(HttpStatus.BAD_REQUEST).json({
         success: false,
         message: 'Request headers are malformed',
@@ -53,7 +52,10 @@ export function sanitizeHeaders(
     }
 
     if (containsNullByte(str)) {
-      logger.warn({ requestId: req.id, header }, 'Null byte in header — possible injection attempt');
+      logger.warn(
+        { requestId: req.id, header },
+        'Null byte in header — possible injection attempt',
+      );
       res.status(HttpStatus.BAD_REQUEST).json({
         success: false,
         message: 'Request headers are malformed',
@@ -76,7 +78,10 @@ export function requireJsonContentType(
 ): void {
   const contentType = req.headers['content-type'] ?? '';
   if (!contentType.includes('application/json')) {
-    logger.warn({ requestId: req.id, contentType }, 'Non-JSON content-type on webhook endpoint');
+    logger.warn(
+      { requestId: req.id, contentType },
+      'Non-JSON content-type on webhook endpoint',
+    );
     res.status(HttpStatus.BAD_REQUEST).json({
       success: false,
       message: 'Content-Type must be application/json',
@@ -95,13 +100,15 @@ export function requireJsonContentType(
  */
 export function sanitizeForLlm(input: string | null | undefined): string {
   if (!input) return '';
-  return input
-    // Strip ASCII control characters (using unicode escapes — no-control-regex safe)
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
-    // Filter prompt injection patterns
-    .replace(/ignore previous instructions?/gi, '[FILTERED]')
-    .replace(/system prompt/gi, '[FILTERED]')
-    .replace(/you are now/gi, '[FILTERED]')
-    .trim()
-    .slice(0, 65536);
+  return (
+    input
+      // Strip ASCII control characters (using unicode escapes — no-control-regex safe)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+      // Filter prompt injection patterns
+      .replace(/ignore previous instructions?/gi, '[FILTERED]')
+      .replace(/system prompt/gi, '[FILTERED]')
+      .replace(/you are now/gi, '[FILTERED]')
+      .trim()
+      .slice(0, 65536)
+  );
 }

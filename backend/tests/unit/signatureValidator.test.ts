@@ -46,73 +46,71 @@ describe('validateWebhookSignature', () => {
     it('should handle different valid bodies', () => {
       const body = '{"action":"synchronize","number":42}';
       const sig = createValidSignature(body);
-      expect(() =>
-        validateWebhookSignature(sig, Buffer.from(body)),
-      ).not.toThrow();
+      expect(() => validateWebhookSignature(sig, Buffer.from(body))).not.toThrow();
     });
   });
 
   describe('❌ Missing signature', () => {
     it('should throw WebhookSignatureError when signature is undefined', () => {
-      expect(() =>
-        validateWebhookSignature(undefined, validBodyBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(undefined, validBodyBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
 
     it('should throw WebhookSignatureError when signature is empty string', () => {
-      expect(() =>
-        validateWebhookSignature('', validBodyBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature('', validBodyBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
   });
 
   describe('❌ Invalid signatures', () => {
     it('should throw for wrong secret', () => {
       const wrongSecretSig = `sha256=${crypto.createHmac('sha256', 'wrong-secret').update(validBody).digest('hex')}`;
-      expect(() =>
-        validateWebhookSignature(wrongSecretSig, validBodyBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(wrongSecretSig, validBodyBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
 
     it('should throw for tampered body', () => {
       const tamperedBuffer = Buffer.from('{"action":"closed"}');
-      expect(() =>
-        validateWebhookSignature(validSignature, tamperedBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(validSignature, tamperedBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
 
     it('should throw for missing sha256= prefix (SHA-1 format)', () => {
       const sha1Sig = `sha1=${crypto.createHmac('sha1', TEST_SECRET).update(validBody).digest('hex')}`;
-      expect(() =>
-        validateWebhookSignature(sha1Sig, validBodyBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(sha1Sig, validBodyBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
 
     it('should throw for completely invalid signature string', () => {
-      expect(() =>
-        validateWebhookSignature('not-a-signature', validBodyBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature('not-a-signature', validBodyBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
 
     it('should throw for different-length signature (padding attack)', () => {
       const shortSig = 'sha256=abc';
-      expect(() =>
-        validateWebhookSignature(shortSig, validBodyBuffer),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(shortSig, validBodyBuffer)).toThrow(
+        WebhookSignatureError,
+      );
     });
   });
 
   describe('❌ Missing body', () => {
     it('should throw when rawBody is undefined', () => {
-      expect(() =>
-        validateWebhookSignature(validSignature, undefined),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(validSignature, undefined)).toThrow(
+        WebhookSignatureError,
+      );
     });
 
     it('should throw when rawBody is empty buffer', () => {
-      expect(() =>
-        validateWebhookSignature(validSignature, Buffer.alloc(0)),
-      ).toThrow(WebhookSignatureError);
+      expect(() => validateWebhookSignature(validSignature, Buffer.alloc(0))).toThrow(
+        WebhookSignatureError,
+      );
     });
   });
 
@@ -121,8 +119,16 @@ describe('validateWebhookSignature', () => {
       let missingErr: unknown;
       let invalidErr: unknown;
 
-      try { validateWebhookSignature(undefined, validBodyBuffer); } catch (e) { missingErr = e; }
-      try { validateWebhookSignature('sha256=badvalue', validBodyBuffer); } catch (e) { invalidErr = e; }
+      try {
+        validateWebhookSignature(undefined, validBodyBuffer);
+      } catch (e) {
+        missingErr = e;
+      }
+      try {
+        validateWebhookSignature('sha256=badvalue', validBodyBuffer);
+      } catch (e) {
+        invalidErr = e;
+      }
 
       expect(missingErr).toBeInstanceOf(WebhookSignatureError);
       expect(invalidErr).toBeInstanceOf(WebhookSignatureError);

@@ -108,9 +108,7 @@ export function formatContextForPrompt(ctx: PRContext): string {
   }
 
   if (ctx.linkedIssues.length > 0) {
-    lines.push(
-      `**Linked Issues:** ${ctx.linkedIssues.map((n) => `#${n}`).join(', ')}`,
-    );
+    lines.push(`**Linked Issues:** ${ctx.linkedIssues.map((n) => `#${n}`).join(', ')}`);
   }
 
   if (ctx.description) {

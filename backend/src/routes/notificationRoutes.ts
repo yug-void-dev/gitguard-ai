@@ -4,7 +4,19 @@ import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-// Route to get all notifications
+// Get all notifications
 router.get('/', protect, notificationController.getNotifications);
+
+// Get notification settings
+router.get('/settings', protect, notificationController.getSettings);
+
+// Update notification settings
+router.put('/settings', protect, notificationController.updateSettings);
+
+// Clear all notifications
+router.delete('/', protect, notificationController.clearAllNotifications);
+
+// Dismiss a single notification
+router.delete('/:id', protect, notificationController.dismissNotification);
 
 export default router;

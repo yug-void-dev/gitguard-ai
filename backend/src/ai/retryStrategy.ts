@@ -70,9 +70,9 @@ function isTransient(error: unknown): boolean {
   const err = error as Record<string, unknown>;
 
   // Axios error shape: err.response.status
-  const status = (err['response'] as Record<string, unknown> | undefined)?.[
-    'status'
-  ] as number | undefined;
+  const status = (err['response'] as Record<string, unknown> | undefined)?.['status'] as
+    | number
+    | undefined;
   if (status !== undefined && RETRYABLE_HTTP_CODES.has(status)) return true;
 
   // Network error codes
@@ -113,13 +113,10 @@ export async function withRetry<T>(
   options: RetryOptions = {},
   eventId = 'unknown',
 ): Promise<T> {
-  const {
-    maxAttempts,
-    baseDelayMs,
-    maxDelayMs,
-    label,
-    shouldRetry,
-  } = { ...DEFAULT_OPTIONS, ...options };
+  const { maxAttempts, baseDelayMs, maxDelayMs, label, shouldRetry } = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
 
   const retryPredicate = shouldRetry ?? isTransient;
   const log = logger.child({ module: 'retryStrategy', eventId, label });
@@ -150,10 +147,7 @@ export async function withRetry<T>(
       }
 
       // Calculate exponential back-off with ±25% jitter
-      const exponential = Math.min(
-        baseDelayMs * Math.pow(2, attempt - 1),
-        maxDelayMs,
-      );
+      const exponential = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs);
       const jitter = exponential * 0.25 * (Math.random() * 2 - 1); // ±25%
       const delayMs = Math.max(0, Math.round(exponential + jitter));
 

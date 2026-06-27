@@ -3,12 +3,14 @@
  * @description Shared types for the multi-LLM layer.
  */
 
-export type LlmProvider = 'gemini' | 'groq' | 'anthropic';
+export type LlmProvider = 'gemini' | 'groq' | 'anthropic' | 'custom';
 
 export interface LlmCallOptions {
   maxTokens?: number;
   temperature?: number;
   user?: string;
+  customEndpoint?: string;
+  customModel?: string;
 }
 
 export interface LlmCallResult {

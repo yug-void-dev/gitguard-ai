@@ -22,7 +22,11 @@ import queueRoutes from './routes/queueRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import repositoryRoutes from './routes/repositoryRoutes';
 import githubRoutes from './routes/githubRoutes';
+import ruleRoutes from './routes/ruleRoutes';
 import commentRoutes from './routes/commentRoutes';
+import teamRoutes from './routes/teamRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
+import { registry } from './lib/metrics';
 
 /**
  * Creates and configures the Express application.
@@ -87,7 +91,18 @@ export function createApp(): Application {
   // applied at the route level. We intentionally do NOT apply
   // express.json() globally here to preserve req.rawBody integrity.
 
+  app.get('/', (_req, res) => {
+    res.status(200).json({ status: 'ok', message: 'GitGuard AI Backend is running' });
+  });
+
   app.use('/health', healthRoutes);
+
+  // Prometheus Metrics endpoint
+  app.get('/metrics', async (_req, res) => {
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  });
+
   app.use('/api/webhooks', webhookRoutes);
 
   // Auth routes (Apply JSON parser only here to avoid conflict with webhooks)
@@ -100,14 +115,23 @@ export function createApp(): Application {
   // Notifications route (authenticated)
   app.use('/api/notifications', express.json(), notificationRoutes);
 
+  // Team management routes (authenticated)
+  app.use('/api/team', express.json(), teamRoutes);
+
   // Repository management routes (authenticated)
   app.use('/api/repositories', express.json(), repositoryRoutes);
 
   // GitHub proxy integration routes (authenticated)
   app.use('/api/github', express.json(), githubRoutes);
 
+  // Rule management routes (authenticated)
+  app.use('/api/rules', express.json(), ruleRoutes);
+
   // Comment, label and suggestion posting routes
   app.use('/api/comments', express.json(), commentRoutes);
+
+  // Analytics routes (authenticated)
+  app.use('/api/analytics', express.json(), analyticsRoutes);
 
   // ── 7. 404 handler ───────────────────────────────────────────────────
   app.use(notFoundHandler);

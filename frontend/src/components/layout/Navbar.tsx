@@ -20,11 +20,14 @@ import {
   Clock,
   RefreshCw,
   GitPullRequest,
+  Trash2,
+  X,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 import Avatar from '../common/Avatar';
-import { getNotifications, type Notification } from '../../services/notification.service';
+import { getNotifications, clearAllNotifications, dismissNotification, type Notification } from '../../services/notification.service';
 import { useTheme } from '../../hooks/useTheme';
 import { T } from '../../constants/theme';
 
@@ -130,6 +133,36 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
     }
   };
 
+  // Dismiss a single notification (optimistic)
+  const handleDismiss = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const prev = notifications;
+    const updated = notifications.filter((n) => n._id !== id);
+    setNotifications(updated);
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await dismissNotification(id);
+    } catch {
+      // Revert on failure
+      setNotifications(prev);
+      setUnreadCount(prev.length);
+    }
+  };
+
+  // Clear all notifications (optimistic)
+  const handleClearAll = async () => {
+    const prev = notifications;
+    setNotifications([]);
+    setUnreadCount(0);
+    try {
+      await clearAllNotifications();
+    } catch {
+      // Revert on failure
+      setNotifications(prev);
+      setUnreadCount(prev.length);
+    }
+  };
+
   // Poll unread count every 30s
   useEffect(() => {
     const poll = async () => {
@@ -155,8 +188,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         height: 60,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end', // no left hamburger — sidebar owns toggle
-        padding: '0 20px',
+        justifyContent: 'space-between',
+        padding: '0 clamp(12px, 3vw, 28px)',
         borderBottom: `1px solid ${T.border}`,
         background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(6,7,20,0.82)',
         backdropFilter: 'blur(14px)',
@@ -167,6 +200,33 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         gap: 10,
       }}
     >
+      {/* ── Hamburger (mobile only — hidden on desktop via CSS) ── */}
+      <motion.button
+        className="navbar-hamburger"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        onClick={_onMenuClick}
+        title="Open menu"
+        style={{
+          display: 'none', // shown on mobile via .navbar-hamburger CSS class
+          background: 'rgba(99,102,241,0.08)',
+          border: `1px solid rgba(99,102,241,0.22)`,
+          borderRadius: 10,
+          color: '#94a3b8',
+          cursor: 'pointer',
+          width: 38,
+          height: 38,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <Menu size={18} />
+      </motion.button>
+
+      {/* ── Spacer — pushes bell+avatar to right on desktop ── */}
+      <div style={{ flex: 1 }} />
+
       {/* ── Notification bell ── */}
       <div ref={notifRef} style={{ position: 'relative' }}>
         <motion.button
@@ -223,6 +283,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         <AnimatePresence>
           {notifOpen && (
             <motion.div
+              className="notif-dropdown"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -232,6 +293,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 top: 'calc(100% + 10px)',
                 right: 0,
                 width: 360,
+                maxWidth: 'calc(100vw - 16px)',
                 maxHeight: 480,
                 background: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(9,10,26,0.98)',
                 border: `1px solid ${T.border}`,
@@ -277,24 +339,56 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                     </span>
                   )}
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={fetchNotifications}
-                  title="Refresh"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: 4,
-                    borderRadius: 6,
-                  }}
-                >
-                  <RefreshCw size={13} style={{ animation: notifLoading ? 'spin 1s linear infinite' : 'none' }} />
-                </motion.button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {/* Clear all */}
+                  {notifications.length > 0 && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={handleClearAll}
+                      title="Clear all notifications"
+                      style={{
+                        background: 'none',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        fontFamily: 'var(--font-body,Inter)',
+                        fontWeight: 600,
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+                    >
+                      <Trash2 size={11} />
+                      Clear all
+                    </motion.button>
+                  )}
+                  {/* Refresh */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={fetchNotifications}
+                    title="Refresh"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 4,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <RefreshCw size={13} style={{ animation: notifLoading ? 'spin 1s linear infinite' : 'none' }} />
+                  </motion.button>
+                </div>
               </div>
 
               {/* Body */}
@@ -336,12 +430,13 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                     No notifications yet
                   </div>
                 )}
-
+                <AnimatePresence>
                 {notifications.map((n) => (
                   <motion.div
                     key={n._id}
                     initial={{ opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20, transition: { duration: 0.15 } }}
                     style={{
                       display: 'flex',
                       gap: 10,
@@ -349,9 +444,18 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                       borderBottom: '1px solid rgba(255,255,255,0.04)',
                       cursor: 'default',
                       transition: 'background 0.15s',
+                      position: 'relative',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.025)';
+                      const btn = e.currentTarget.querySelector('.notif-dismiss') as HTMLElement;
+                      if (btn) btn.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      const btn = e.currentTarget.querySelector('.notif-dismiss') as HTMLElement;
+                      if (btn) btn.style.opacity = '0';
+                    }}
                   >
                     {/* Icon */}
                     <div style={{
@@ -416,8 +520,40 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Per-item dismiss button */}
+                    <motion.button
+                      className="notif-dismiss"
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.85 }}
+                      onClick={(e) => handleDismiss(n._id, e)}
+                      title="Dismiss"
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 10,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 5,
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 18,
+                        height: 18,
+                        padding: 0,
+                        opacity: 0,
+                        transition: 'opacity 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.2)'; (e.currentTarget as HTMLElement).style.color = '#ef4444'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
+                    >
+                      <X size={10} />
+                    </motion.button>
                   </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
             </motion.div>
           )}
@@ -445,19 +581,23 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)'; }}
         >
           <Avatar src={user?.avatarUrl} name={user?.login ?? 'User'} size={28} />
-          <span style={{
-            fontFamily: 'var(--font-body,Inter)',
-            fontSize: 13,
-            fontWeight: 500,
-            color: T.text,
-            maxWidth: 100,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
+          <span
+            className="navbar-username"
+            style={{
+              fontFamily: 'var(--font-body,Inter)',
+              fontSize: 13,
+              fontWeight: 500,
+              color: T.text,
+              maxWidth: 100,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {user?.login ?? 'User'}
           </span>
           <ChevronDown
+            className="navbar-chevron"
             size={13}
             color={T.sub}
             style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
@@ -468,6 +608,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         <AnimatePresence>
           {dropdownOpen && (
             <motion.div
+              className="user-dropdown"
               initial={{ opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -477,6 +618,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
                 top: 'calc(100% + 8px)',
                 right: 0,
                 minWidth: 190,
+                maxWidth: 'calc(100vw - 16px)',
                 background: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(9,10,26,0.98)',
                 border: `1px solid ${T.border}`,
                 borderRadius: 12,

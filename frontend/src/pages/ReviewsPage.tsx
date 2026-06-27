@@ -208,7 +208,7 @@ const ReviewCard: React.FC<{
           style={{
             marginTop: 18,
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(90px, 100%), 1fr))',
             gap: 8,
             padding: '10px',
             borderRadius: 10,
@@ -316,14 +316,7 @@ const ReviewsPage: React.FC = () => {
   }, [reviews, searchTerm, statusFilter, sortField, sortOrder]);
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: '100%',
-        padding: '24px 28px',
-      }}
-    >
+    <div className="page-shell" style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
       <AppBackground />
 
       <motion.div
@@ -347,6 +340,8 @@ const ReviewsPage: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'flex-start',
             marginBottom: 28,
+            flexWrap: 'wrap',
+            gap: 16,
           }}
         >
           <div>
@@ -390,7 +385,7 @@ const ReviewsPage: React.FC = () => {
             </motion.p>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: `0 0 28px ${T.cyan}70` }}
               whileTap={{ scale: 0.95 }}
@@ -436,7 +431,7 @@ const ReviewsPage: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
             gap: 12,
             marginBottom: 28,
           }}
@@ -465,7 +460,7 @@ const ReviewsPage: React.FC = () => {
         </div>
 
         {/* Two column dashboard body layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
           
           {/* Main List Section */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -562,7 +557,7 @@ const ReviewsPage: React.FC = () => {
                   exit={{ opacity: 0 }}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
                     gap: 16,
                   }}
                 >
@@ -632,7 +627,7 @@ const ReviewsPage: React.FC = () => {
                   exit={{ opacity: 0 }}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
                     gap: 16,
                   }}
                 >

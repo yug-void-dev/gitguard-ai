@@ -1,8 +1,13 @@
 import api from './api';
+import { STORAGE_KEYS } from '../constants/config';
 import type { LoginCredentials, RegisterCredentials, AuthResponse, User } from '../types/auth.types';
 
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   const { data } = await api.post<AuthResponse>('/auth/login', credentials);
+  // Persist JWT so subsequent API calls include Authorization header
+  if (data.token) {
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
+  }
   return data;
 };
 
@@ -13,10 +18,27 @@ export const register = async (credentials: RegisterCredentials): Promise<AuthRe
 
 export const logout = async (): Promise<void> => {
   await api.post('/auth/logout');
+  // Clear the stored JWT on logout
+  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
 };
 
 export const getMe = async (): Promise<{ success: boolean; user: User }> => {
   const { data } = await api.get<{ success: boolean; user: User }>('/auth/me');
+  return data;
+};
+
+export const forgotPassword = async (email: string): Promise<{ success: boolean; message: string; previewUrl?: string }> => {
+  const { data } = await api.post<{ success: boolean; message: string; previewUrl?: string }>('/auth/forgot-password', { email });
+  return data;
+};
+
+export const verifyOtp = async (email: string, otp: string): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post<{ success: boolean; message: string }>('/auth/verify-otp', { email, otp });
+  return data;
+};
+
+export const resetPassword = async (email: string, otp: string, password: string): Promise<{ success: boolean; message: string }> => {
+  const { data } = await api.post<{ success: boolean; message: string }>('/auth/reset-password', { email, otp, password });
   return data;
 };
 
@@ -25,4 +47,7 @@ export const authService = {
   register,
   logout,
   getMe,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
 };

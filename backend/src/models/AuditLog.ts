@@ -12,7 +12,11 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 export type AuditOutcome = 'success' | 'failure' | 'ignored';
 
 /** Possible event types we audit */
-export type AuditEventType = 'webhook_received' | 'signature_validated' | 'event_processed' | 'event_ignored';
+export type AuditEventType =
+  | 'webhook_received'
+  | 'signature_validated'
+  | 'event_processed'
+  | 'event_ignored';
 
 /** Shape of an AuditLog document */
 export interface IAuditLog extends Document {
@@ -76,7 +80,12 @@ const auditLogSchema = new Schema<IAuditLog>(
     eventType: {
       type: String,
       required: true,
-      enum: ['webhook_received', 'signature_validated', 'event_processed', 'event_ignored'],
+      enum: [
+        'webhook_received',
+        'signature_validated',
+        'event_processed',
+        'event_ignored',
+      ],
     },
     outcome: {
       type: String,

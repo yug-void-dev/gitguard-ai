@@ -44,13 +44,13 @@ COPY --chown=gitguard:nodejs package.json ./
 # Switch to non-root user
 USER gitguard
 
-# Expose application port
-EXPOSE 3001
+# Expose application port (Default to 10000 to match Render's default routing port)
+EXPOSE 10000
 
-# Health check
+# Health check (handles dynamic PORT environment variable)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || '10000') + '/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"
 
 # Use tini as init process to handle SIGTERM properly
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]

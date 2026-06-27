@@ -149,7 +149,10 @@ export const connectRepository = async (
     }
 
     // Prevent duplicate connections
-    const existing = await Repository.findOne({ githubId: repositoryId, ownerId: userId });
+    const existing = await Repository.findOne({
+      githubId: repositoryId,
+      ownerId: userId,
+    });
     if (existing) {
       res.status(409).json({ success: false, message: 'Repository already connected' });
       return;
@@ -199,7 +202,10 @@ export const connectRepository = async (
         );
         webhookId = hook.id;
       } catch (hookError) {
-        logger.warn({ hookError }, 'Failed to install webhook or fetch metadata — continuing without it');
+        logger.warn(
+          { hookError },
+          'Failed to install webhook or fetch metadata — continuing without it',
+        );
       }
     }
 
@@ -320,7 +326,10 @@ export const disconnectRepository = async (
             },
           );
         } catch (hookError) {
-          logger.warn({ hookError }, 'Failed to remove webhook — continuing with deletion');
+          logger.warn(
+            { hookError },
+            'Failed to remove webhook — continuing with deletion',
+          );
         }
       }
     }

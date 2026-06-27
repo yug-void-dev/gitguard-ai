@@ -23,7 +23,7 @@ export const webhookRateLimiter = rateLimit({
   windowMs: env.WEBHOOK_RATE_LIMIT_WINDOW_MS,
   max: env.WEBHOOK_RATE_LIMIT_MAX,
   standardHeaders: true, // Return rate limit info in RateLimit-* headers
-  legacyHeaders: false,  // Disable X-RateLimit-* headers (deprecated)
+  legacyHeaders: false, // Disable X-RateLimit-* headers (deprecated)
 
   // Custom key generator — use IP + User-Agent to be slightly smarter
   keyGenerator: (req: Request): string => {

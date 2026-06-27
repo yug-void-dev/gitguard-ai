@@ -18,11 +18,7 @@ const SILENT_PATHS = new Set(['/health', '/favicon.ico']);
 /**
  * Middleware that logs HTTP requests and responses with timing.
  */
-export function requestLogger(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function requestLogger(req: Request, res: Response, next: NextFunction): void {
   // Skip noisy health-check endpoints
   if (SILENT_PATHS.has(req.path)) {
     next();
@@ -48,11 +44,12 @@ export function requestLogger(
   // Hook into response finish event to log the outcome
   res.on('finish', () => {
     const durationMs = Date.now() - startTime;
-    const logFn = res.statusCode >= 500
-      ? reqLogger.error.bind(reqLogger)
-      : res.statusCode >= 400
-      ? reqLogger.warn.bind(reqLogger)
-      : reqLogger.info.bind(reqLogger);
+    const logFn =
+      res.statusCode >= 500
+        ? reqLogger.error.bind(reqLogger)
+        : res.statusCode >= 400
+          ? reqLogger.warn.bind(reqLogger)
+          : reqLogger.info.bind(reqLogger);
 
     logFn(
       {

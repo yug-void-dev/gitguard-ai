@@ -32,17 +32,33 @@ import { REVIEW_QUEUE_NAME } from './reviewQueue';
 import { measureStage } from './queueMetrics';
 import { enrichFindings } from '../ai/suggestionEnricher';
 import { scanDiffForVulnerabilities } from '../ai/vulnerabilityScanner';
-import { Review } from '../models/Review';
+import { Review, IFinding } from '../models/Review';
+import { GitHubComment } from '../models/GitHubComment';
 import { logger } from '../lib/logger';
-import { ReviewJobPayload, AnalysisResult, AnalysisFinding } from '../types/analysis';
+import { ReviewJobPayload, AnalysisFinding } from '../types/analysis';
 import { processDiff } from '../github/diffProcessor';
 import { routeToLLM } from '../llm/llmRouter';
 import { broadcastReviewEvent } from '../websocket';
+import {
+  loadActiveRule,
+  filterFindings,
+  scanDiffForCustomPatterns,
+} from '../services/ruleEngine';
+import { computeEnhancedMetrics } from '../services/codeQualityService';
+import { postReviewComment } from '../services/commentService';
+import { postInlineSuggestions } from '../services/suggestionService';
+import { User } from '../models/User';
+import { Repository } from '../models/Repository';
+import { NotificationSettings } from '../models/NotificationSettings';
+import { createOctokitClient, fetchRawDiff } from '../github/octokitClient';
+import { dispatchNotifications } from '../services/slackDiscordService';
+import { createJiraIssue } from '../services/jiraService';
+import { createLinearIssue } from '../services/linearService';
+import { reviewsTotalCounter, reviewLatencyHistogram } from '../lib/metrics';
 import axios from 'axios';
 import pino from 'pino';
-import { postReviewComment } from '../services/commentService';
 import { applyPRLabels } from '../services/labelService';
-import { postSuggestions } from '../services/suggestionService';
+import { DIFF_PROCESSING, QUEUE_CONFIG } from '../config/constants';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -60,14 +76,10 @@ let _worker: Worker<ReviewJobPayload> | null = null;
 export function startWorker(): Worker<ReviewJobPayload> {
   if (_worker) return _worker;
 
-  _worker = new Worker<ReviewJobPayload>(
-    REVIEW_QUEUE_NAME,
-    processJob,
-    {
-      connection: getRedisConnection(),
-      concurrency: WORKER_CONCURRENCY,
-    },
-  );
+  _worker = new Worker<ReviewJobPayload>(REVIEW_QUEUE_NAME, processJob, {
+    connection: getRedisConnection(),
+    concurrency: WORKER_CONCURRENCY,
+  });
 
   _worker.on('completed', (job) => {
     logger.info(
@@ -111,6 +123,24 @@ export function startWorker(): Worker<ReviewJobPayload> {
             payload: failedReview.toJSON(),
             timestamp: new Date().toISOString(),
           });
+
+          reviewsTotalCounter.inc({ status: 'failed', repository: repositoryFullName });
+
+          try {
+            const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+            if (repoDoc) {
+              const settingsList = await NotificationSettings.find({
+                userId: repoDoc.ownerId,
+              });
+              await dispatchNotifications(settingsList, 'reviewFailed', {
+                title: `❌ Review Failed: ${repositoryFullName}#${prNumber}`,
+                message: `The GitGuard AI review failed to complete: ${error.message}`,
+                color: '#ff0000',
+              });
+            }
+          } catch (notifErr) {
+            logger.error({ err: notifErr }, 'Failed to dispatch failure notification');
+          }
         }
       } catch (err) {
         logger.error({ err }, 'Failed to save and broadcast review failure event');
@@ -158,6 +188,21 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
 
   log.info('📥 Processing review job');
 
+  // Try to retrieve repository user access token for authenticated requests (handles private repos)
+  const [owner, repoName] = repositoryFullName.split('/');
+  let accessToken: string | null = null;
+  try {
+    const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+    if (repoDoc) {
+      const user = await User.findById(repoDoc.ownerId).select('+accessToken');
+      if (user?.accessToken) {
+        accessToken = user.accessToken;
+      }
+    }
+  } catch (dbErr) {
+    log.error({ err: dbErr }, 'Failed to query database for repository/user token');
+  }
+
   // ── Stage 1: Fetch or Use raw diff ──────────────────────────────────
   const rawDiff = await measureStage(
     'fetch-diff',
@@ -168,6 +213,12 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
         log.info('Using rawDiff provided in job payload');
         return job.data.rawDiff;
       }
+      if (accessToken) {
+        log.info('Fetching authenticated PR diff via Octokit');
+        const octokit = createOctokitClient(accessToken);
+        return fetchRawDiff(octokit, owner, repoName, prNumber);
+      }
+      log.info('Fetching unauthenticated PR diff via axios');
       return fetchDiff(diffUrl, log);
     },
   );
@@ -188,17 +239,24 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     'Diff processed and chunked',
   );
 
+  // Load active rule spec early so we can pass AI provider preferences
+  const activeRuleSpec = await loadActiveRule(repositoryFullName);
+
   // ── Stage 3: LLM Analysis ───────────────────────────────────────────
+  const latencyTimer = reviewLatencyHistogram.startTimer({ repository: repositoryFullName });
   const llmResult = await measureStage(
     'llm-analysis',
     jobId,
     repositoryFullName,
-    async () => routeToLLM({
-      chunks: processedDiff.chunks,
-      context,
-      eventId,
-    }),
+    async () =>
+      routeToLLM({
+        chunks: processedDiff.chunks,
+        context,
+        eventId,
+        ruleSpec: activeRuleSpec,
+      }),
   );
+  latencyTimer();
 
   const rawFindings = llmResult.findings;
   log.info(
@@ -231,18 +289,47 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
     'Vulnerability scan complete',
   );
 
-  // ── Stage 6: Compute metrics ──────────────────────────────────────────
-  const metrics = computeMetrics(enrichedFindings, vulnerabilities.length);
+  // ── Stage 6: Apply repository rule engine filtering (Teammate B) ───────
+  const filterResult = await measureStage(
+    'rule-filter',
+    jobId,
+    repositoryFullName,
+    async () => {
+      const result = filterFindings(enrichedFindings, activeRuleSpec);
+      const customFindings = scanDiffForCustomPatterns(rawDiff, activeRuleSpec);
+      result.filteredFindings = [...result.filteredFindings, ...customFindings];
+      return result;
+    },
+  );
 
-  // ── Stage 7: Persist to MongoDB ───────────────────────────────────────
-  await measureStage(
+  const filteredFindings = filterResult.filteredFindings;
+  log.info(
+    {
+      originalCount: enrichedFindings.length,
+      filteredCount: filteredFindings.length,
+      suppressedCount: filterResult.suppressedCount,
+      reasons: filterResult.suppressedReasons,
+    },
+    'Rule engine filtering complete',
+  );
+
+  // ── Stage 7: Enhanced metrics (Teammate C) ─────────────────────────────
+  const enhancedMetrics = await measureStage(
+    'enhanced-metrics',
+    jobId,
+    repositoryFullName,
+    async () => computeEnhancedMetrics(filteredFindings, vulnerabilities.length, rawDiff),
+  );
+
+  // ── Stage 8: Persist results to MongoDB ────────────────────────────────
+  const updatedReview = await measureStage(
     'persist-result',
     jobId,
     repositoryFullName,
     async () => {
       const [owner, repoName] = repositoryFullName.split('/');
 
-      const updatedReview = await Review.findOneAndUpdate(
+      const reviewDoc = await Review.findOneAndUpdate(
         {
           'repository.fullName': repositoryFullName,
           prNumber,
@@ -252,137 +339,230 @@ async function processJob(job: Job<ReviewJobPayload>): Promise<void> {
             repository: { owner, name: repoName, fullName: repositoryFullName },
             prTitle: context.title,
             status: 'completed',
-            findings: enrichedFindings.map((f) => ({
+            findings: filteredFindings.map((f) => ({
               file: f.file,
               line: f.line,
               severity: f.severity,
               message: f.message,
               suggestion: f.suggestion,
               confidence: f.confidence,
+              category: f.category,
             })),
-            summary: buildSummary(enrichedFindings, vulnerabilities.length, context.title),
+            summary: buildSummary(
+              filteredFindings,
+              vulnerabilities.length,
+              context.title,
+            ),
             metrics: {
               vulnerabilitiesCount: vulnerabilities.length,
-              performanceIssuesCount: enrichedFindings.filter(
+              performanceIssuesCount: filteredFindings.filter(
                 (f) => f.category === 'performance',
               ).length,
-              codeQualityScore: metrics.codeQualityScore,
+              codeQualityScore: enhancedMetrics.codeQualityScore,
             },
-            diffData: rawDiff.slice(0, 50_000), // cap stored diff size
+            tokenUsage: {
+              promptTokens: llmResult.totalPromptTokens,
+              completionTokens: llmResult.totalCompletionTokens,
+              totalTokens: llmResult.totalPromptTokens + llmResult.totalCompletionTokens,
+            },
+            diffData: rawDiff.slice(0, DIFF_PROCESSING.MAX_STORED_DIFF_CHARS), // cap stored diff size
           },
         },
         { upsert: true, new: true },
       );
 
-      if (updatedReview) {
+      if (reviewDoc) {
         broadcastReviewEvent({
           type: 'review:completed',
-          payload: updatedReview.toJSON(),
+          payload: reviewDoc.toJSON(),
           timestamp: new Date().toISOString(),
         });
+
+        // ── Ensure a GitHubComment record always exists for this review ──
+        // This allows the Apply Fix feature to work even when Stage 9
+        // (GitHub posting) is skipped (e.g. test script reviews without a token).
+        try {
+          const existingComment = await GitHubComment.findOne({
+            reviewId: reviewDoc._id,
+            status: { $ne: 'archived' },
+          });
+
+          if (!existingComment) {
+            const summaryBody = buildSummary(
+              filteredFindings,
+              vulnerabilities.length,
+              context.title,
+            );
+            const localComment = new GitHubComment({
+              reviewId: reviewDoc._id,
+              repository: { owner, name: repoName, fullName: repositoryFullName },
+              prNumber,
+              prTitle: context.title,
+              type: 'review',
+              bodyMarkdown: summaryBody,
+              summary: {
+                findingsCount: filteredFindings.length,
+                criticalCount: filteredFindings.filter((f) => f.severity === 'critical')
+                  .length,
+                highCount: filteredFindings.filter((f) => f.severity === 'high').length,
+                mediumCount: filteredFindings.filter((f) => f.severity === 'medium')
+                  .length,
+                lowCount: filteredFindings.filter((f) => f.severity === 'low').length,
+              },
+              // Mark as 'posted' so it is returned by the getCommentByReview endpoint
+              status: 'posted',
+              postedAt: new Date(),
+            });
+            localComment.addAuditEvent('created', {
+              source: 'local-persist',
+              reviewId: reviewDoc._id,
+            });
+            localComment.addAuditEvent('posted', {
+              source: 'local-persist',
+              note: 'auto-created for apply-fix support',
+            });
+            await localComment.save();
+            log.info(
+              { commentId: localComment._id, reviewId: reviewDoc._id },
+              'Auto-created local GitHubComment for apply-fix support',
+            );
+          }
+        } catch (commentCreateErr) {
+          log.warn(
+            { err: commentCreateErr },
+            'Failed to auto-create local GitHubComment (non-blocking)',
+          );
+        }
       }
+
+      return reviewDoc;
     },
   );
 
-  // ── Stage 8: Post GitHub comments + auto-labels ────────────────────
-  // Only post if we have a GitHub token in the job payload
-  if (job.data.githubToken) {
-    const [owner, repoName] = repositoryFullName.split('/');
-    const headSha = job.data.headSha ?? '';
+  // ── Stage 9: Post comment and suggestions back to GitHub PR (Teammate C) ────────────────
+  if (updatedReview) {
+    try {
+      let token = job.data.githubToken;
 
-    await measureStage(
-      'post-comments',
-      jobId,
-      repositoryFullName,
-      async () => {
-        // Fetch the saved review to get the full IFinding[] array
-        const savedReview = await Review.findOne({
-          'repository.fullName': repositoryFullName,
-          prNumber,
-        });
-
-        if (!savedReview) {
-          log.warn('Could not find saved review for comment posting — skipping');
-          return;
+      if (!token) {
+        const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+        if (repoDoc) {
+          const user = await User.findById(repoDoc.ownerId).select('+accessToken');
+          if (user?.accessToken) {
+            token = user.accessToken;
+          }
         }
+      }
 
-        // Post rich Markdown summary + inline review comments
-        const commentResult = await postReviewComment({
-          token: job.data.githubToken!,
-          owner,
-          repo: repoName,
-          prNumber,
-          headSha,
-          findings: savedReview.findings,
-          context,
-          metrics: {
-            codeQualityScore: metrics.codeQualityScore,
-            vulnerabilitiesCount: vulnerabilities.length,
-            performanceIssuesCount: enrichedFindings.filter(
-              (f) => f.category === 'performance',
-            ).length,
-          },
-          eventId,
+      if (token) {
+        const octokit = createOctokitClient(token);
+
+        await measureStage('post-github-comment', jobId, repositoryFullName, async () => {
+          // 1. Post primary bot review comment
+          const commentDoc = await postReviewComment({
+            octokit,
+            reviewDoc: updatedReview,
+            context,
+            eventTraceId: eventId,
+          });
+
+          // 2. Post inline suggestion blocks for critical/high issues
+          if (commentDoc) {
+            await postInlineSuggestions({
+              octokit,
+              commentDoc,
+              findings: filteredFindings,
+              prNumber,
+            });
+          }
+
+          // 3. Apply PR labels based on findings
+          try {
+            const [owner, repoName] = repositoryFullName.split('/');
+            await applyPRLabels(
+              token!,
+              owner,
+              repoName,
+              prNumber,
+              filteredFindings,
+              eventId,
+            );
+          } catch (labelErr) {
+            log.warn({ err: labelErr }, 'Failed to apply PR labels (non-blocking)');
+          }
         });
-
-        // Post one-click suggestion comments for actionable findings
-        const suggestionResult = await postSuggestions({
-          token: job.data.githubToken!,
-          owner,
-          repo: repoName,
-          prNumber,
-          headSha,
-          findings: savedReview.findings,
-          eventId,
-        });
-
-        // Apply PR labels based on findings
-        const labelResult = await applyPRLabels(
-          job.data.githubToken!,
-          owner,
-          repoName,
-          prNumber,
-          savedReview.findings,
-          eventId,
+      } else {
+        log.warn(
+          'Skipping Stage 9: No access token stored for repository owner or passed in payload.',
         );
-
-        log.info(
-          {
-            summaryCommentId: commentResult.summaryCommentId,
-            inlineComments: commentResult.inlineCommentsPosted,
-            suggestions: suggestionResult.suggestionsPosted,
-            labelsApplied: labelResult.labelsApplied,
-          },
-          '✅ GitHub comments + labels posted',
-        );
-      },
-    );
-  } else {
-    log.info('No githubToken in job payload — skipping GitHub comment posting');
+      }
+    } catch (commentError) {
+      log.error({ err: commentError }, 'Failed to post GitHub comments/suggestions');
+    }
   }
 
   log.info(
     {
-      findings: enrichedFindings.length,
+      findings: filteredFindings.length,
       vulnerabilities: vulnerabilities.length,
-      score: metrics.codeQualityScore,
+      score: enhancedMetrics.codeQualityScore,
     },
     '🎉 Review pipeline complete',
   );
+
+  // ── Stage 10: Dispatch Webhook Notifications ─────────────────────────────────
+  try {
+    const repoDoc = await Repository.findOne({ fullName: repositoryFullName });
+    if (repoDoc) {
+      const settingsList = await NotificationSettings.find({ userId: repoDoc.ownerId });
+      if (settingsList.length > 0) {
+        const payloadTitle = `✅ Review Completed: ${repositoryFullName}#${prNumber}`;
+        const payloadMessage = buildSummary(
+          filteredFindings,
+          vulnerabilities.length,
+          context.title,
+        );
+        const color =
+          filteredFindings.some((f) => f.severity === 'critical') ||
+          vulnerabilities.length > 0
+            ? '#ff0000'
+            : filteredFindings.some((f) => f.severity === 'high')
+              ? '#ff9900'
+              : '#36a64f';
+
+        await dispatchNotifications(settingsList, 'reviewCompleted', {
+          title: payloadTitle,
+          message: payloadMessage,
+          url: `https://github.com/${repositoryFullName}/pull/${prNumber}`,
+          color,
+        });
+
+        const isCritical = filteredFindings.some((f) => f.severity === 'critical') || vulnerabilities.length > 0;
+        
+        if (isCritical) {
+          for (const settings of settingsList) {
+            await createJiraIssue(settings, `[GitGuard AI] Critical Issues in PR #${prNumber}`, payloadMessage);
+            await createLinearIssue(settings, `[GitGuard AI] Critical Issues in PR #${prNumber}`, payloadMessage);
+          }
+        }
+      }
+    }
+  } catch (notifErr) {
+    log.error({ err: notifErr }, 'Failed to dispatch completion notifications');
+  }
+
+  reviewsTotalCounter.inc({ status: 'completed', repository: repositoryFullName });
 }
 
 // ─── Private Helpers ──────────────────────────────────────────────────────────
 
 /** Fetches the raw diff text from GitHub's diff URL */
-async function fetchDiff(
-  diffUrl: string,
-  log: pino.Logger,
-): Promise<string> {
+async function fetchDiff(diffUrl: string, log: pino.Logger): Promise<string> {
   log.debug({ diffUrl }, 'Fetching PR diff');
 
   const response = await axios.get<string>(diffUrl, {
-    timeout: 15_000,
-    headers: { Accept: 'application/vnd.github.v3.diff' },
+    timeout: QUEUE_CONFIG.AXIOS_TIMEOUT_MS,
+    headers: { Accept: 'application/vnd.github.v3.diff, text/plain, */*' },
   });
 
   if (typeof response.data !== 'string') {
@@ -393,44 +573,9 @@ async function fetchDiff(
   return response.data;
 }
 
-
-/** Computes aggregate metrics from enriched findings */
-function computeMetrics(
-  findings: AnalysisFinding[],
-  vulnerabilityCount: number,
-): AnalysisResult['metrics'] {
-  const counts = {
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    info: 0,
-    totalFindings: findings.length,
-    vulnerabilitiesFound: vulnerabilityCount,
-    codeQualityScore: 100,
-  };
-
-  for (const f of findings) {
-    counts[f.severity]++;
-  }
-
-  // Deduct from quality score: critical=20, high=10, medium=5, low=2, vuln=15
-  counts.codeQualityScore = Math.max(
-    0,
-    100 -
-      counts.critical * 20 -
-      counts.high * 10 -
-      counts.medium * 5 -
-      counts.low * 2 -
-      vulnerabilityCount * 15,
-  );
-
-  return counts;
-}
-
 /** Builds a one-paragraph summary of the analysis */
 function buildSummary(
-  findings: AnalysisFinding[],
+  findings: (IFinding | AnalysisFinding)[],
   vulnCount: number,
   prTitle: string,
 ): string {
@@ -445,9 +590,11 @@ function buildSummary(
     `GitGuard AI reviewed "${prTitle}" and found ${findings.length} issue(s).`,
   ];
 
-  if (criticalCount > 0) parts.push(`🚨 ${criticalCount} critical issue(s) require immediate attention.`);
+  if (criticalCount > 0)
+    parts.push(`🚨 ${criticalCount} critical issue(s) require immediate attention.`);
   if (highCount > 0) parts.push(`⚠️ ${highCount} high-severity issue(s) found.`);
-  if (vulnCount > 0) parts.push(`🔒 ${vulnCount} dependency vulnerability/vulnerabilities detected.`);
+  if (vulnCount > 0)
+    parts.push(`🔒 ${vulnCount} dependency vulnerability/vulnerabilities detected.`);
 
   return parts.join(' ');
 }

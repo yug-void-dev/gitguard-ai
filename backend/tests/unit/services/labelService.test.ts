@@ -4,7 +4,7 @@
  */
 
 const mockCreateLabel = jest.fn();
-const mockAddLabels   = jest.fn();
+const mockAddLabels = jest.fn();
 const mockRemoveLabel = jest.fn();
 
 jest.mock('@octokit/rest', () => ({
@@ -12,7 +12,7 @@ jest.mock('@octokit/rest', () => ({
     rest: {
       issues: {
         createLabel: mockCreateLabel,
-        addLabels:   mockAddLabels,
+        addLabels: mockAddLabels,
         removeLabel: mockRemoveLabel,
       },
     },
@@ -117,11 +117,22 @@ describe('applyPRLabels', () => {
     });
 
     it('should not throw if removeLabel returns 404 (label not on PR)', async () => {
-      mockRemoveLabel.mockRejectedValue(Object.assign(new Error('Not Found'), { status: 404 }));
+      mockRemoveLabel.mockRejectedValue(
+        Object.assign(new Error('Not Found'), { status: 404 }),
+      );
       const findings = [makeFinding({ severity: 'high' })];
       await expect(
         applyPRLabels('token', 'owner', 'repo', 1, findings, 'evt-8'),
       ).resolves.not.toThrow();
+    });
+
+    it('should survive if addLabels throws due to rate limit', async () => {
+      mockAddLabels.mockRejectedValue(
+        Object.assign(new Error('Rate Limit Exceeded'), { status: 403 }),
+      );
+      const result = await applyPRLabels('token', 'owner', 'repo', 1, [], 'evt-10');
+      // Should return the labels it tried to apply, even if GitHub failed
+      expect(result.labelsApplied).toContain('ai-reviewed');
     });
   });
 });

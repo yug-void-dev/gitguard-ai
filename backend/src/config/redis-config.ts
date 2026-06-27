@@ -31,17 +31,16 @@ export function getRedisConnection(): IORedis {
     _connection = new IORedis({
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,
+      username: env.REDIS_PASSWORD ? 'default' : undefined,
       password: env.REDIS_PASSWORD || undefined,
+      tls: env.REDIS_HOST !== 'localhost' && env.REDIS_HOST !== '127.0.0.1' ? {} : undefined,
       maxRetriesPerRequest: null, // Required by BullMQ
-      enableReadyCheck: false,    // Required by BullMQ
+      enableReadyCheck: false, // Required by BullMQ
       lazyConnect: false,
     });
 
     _connection.on('connect', () => {
-      logger.info(
-        { host: env.REDIS_HOST, port: env.REDIS_PORT },
-        '🔴 Redis connected',
-      );
+      logger.info({ host: env.REDIS_HOST, port: env.REDIS_PORT }, '🔴 Redis connected');
     });
 
     _connection.on('error', (error) => {
@@ -67,4 +66,3 @@ export async function closeRedisConnection(): Promise<void> {
     logger.info('Redis connection closed gracefully');
   }
 }
-

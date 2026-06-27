@@ -55,7 +55,12 @@ jest.mock('../../../src/config/env', () => ({
 }));
 
 // Now import after mocks are set up
-import { getReviewQueue, enqueueReviewJob, closeReviewQueue, REVIEW_QUEUE_NAME } from '../../../src/queue/reviewQueue';
+import {
+  getReviewQueue,
+  enqueueReviewJob,
+  closeReviewQueue,
+  REVIEW_QUEUE_NAME,
+} from '../../../src/queue/reviewQueue';
 import { getQueueSnapshot } from '../../../src/queue/queueMetrics';
 import { ReviewJobPayload, PRContext } from '../../../src/types/analysis';
 

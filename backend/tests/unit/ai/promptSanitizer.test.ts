@@ -3,7 +3,11 @@
  * @description Unit tests for the prompt injection defence and chunk splitting.
  */
 
-import { sanitiseDiff, splitAndSanitiseDiff, MAX_CHUNK_CHARS } from '../../../src/ai/promptSanitizer';
+import {
+  sanitiseDiff,
+  splitAndSanitiseDiff,
+  MAX_CHUNK_CHARS,
+} from '../../../src/ai/promptSanitizer';
 
 const EVENT_ID = 'test-event-123';
 

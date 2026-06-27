@@ -25,11 +25,11 @@ import { logger } from '../lib/logger';
 /** Represents a single line in a diff hunk */
 export interface DiffLine {
   type: 'context' | 'addition' | 'deletion';
-  lineNumber?: number;          // Line number in new file
-  oldLineNumber?: number;        // Line number in old file
-  content: string;               // Raw line content without +/-
-  hasFinding?: boolean;          // True if a finding is attached to this line
-  findingIds?: string[];         // ObjectIds of findings on this line
+  lineNumber?: number; // Line number in new file
+  oldLineNumber?: number; // Line number in old file
+  content: string; // Raw line content without +/-
+  hasFinding?: boolean; // True if a finding is attached to this line
+  findingIds?: string[]; // ObjectIds of findings on this line
 }
 
 /** Represents a code hunk (contiguous diff block) */
@@ -40,7 +40,7 @@ export interface DiffHunk {
   newStartLine: number;
   newLineCount: number;
   lines: DiffLine[];
-  findings: IFinding[];          // Findings specific to this hunk
+  findings: IFinding[]; // Findings specific to this hunk
 }
 
 /** Side-by-side diff representation for frontend */
@@ -134,12 +134,15 @@ export function formatDiffForFrontend(
   const mediumCount = allFindings.filter((f) => f.severity === 'medium').length;
   const lowCount = allFindings.filter((f) => f.severity === 'low').length;
 
-  log.info({
-    filesCount: formattedFiles.length,
-    findingsCount: allFindings.length,
-    critical: criticalCount,
-    high: highCount,
-  }, 'Diff formatted for frontend');
+  log.info(
+    {
+      filesCount: formattedFiles.length,
+      findingsCount: allFindings.length,
+      critical: criticalCount,
+      high: highCount,
+    },
+    'Diff formatted for frontend',
+  );
 
   return {
     files: formattedFiles,
@@ -177,24 +180,55 @@ export function formatFindingsAsMarkdown(
 
   const blocks: MarkdownCommentBlock[] = [];
 
+  // ─── Progress Bar Helper ──────────────────────────────────────────────────
+  const buildProgressBar = (score: number): string => {
+    const totalBlocks = 15;
+    const filledBlocks = Math.round((score / 100) * totalBlocks);
+    const emptyBlocks = totalBlocks - filledBlocks;
+    return `[\`${'█'.repeat(filledBlocks)}${'░'.repeat(emptyBlocks)}\`]`;
+  };
+
   // ─── Summary Block ────────────────────────────────────────────────────────
   const criticalCount = findings.filter((f) => f.severity === 'critical').length;
   const highCount = findings.filter((f) => f.severity === 'high').length;
   const mediumCount = findings.filter((f) => f.severity === 'medium').length;
-  const severityEmoji = criticalCount > 0 ? '🔴' : highCount > 0 ? '🟠' : mediumCount > 0 ? '🟡' : '🟢';
 
-  const summaryMarkdown = `## ${severityEmoji} GitGuard AI Code Review
+  let grade = 'F';
+  let gradeColor = '🔴';
+  if (metrics.codeQualityScore >= 90) {
+    grade = 'A';
+    gradeColor = '🟢';
+  } else if (metrics.codeQualityScore >= 80) {
+    grade = 'B';
+    gradeColor = '🟢';
+  } else if (metrics.codeQualityScore >= 70) {
+    grade = 'C';
+    gradeColor = '🟡';
+  } else if (metrics.codeQualityScore >= 60) {
+    grade = 'D';
+    gradeColor = '🟠';
+  }
 
-**PR:** #${context.prNumber} — ${context.title}  
-**Quality Score:** \`${metrics.codeQualityScore}%\` | **Vulnerabilities:** \`${metrics.vulnerabilitiesCount}\` | **Performance Issues:** \`${metrics.performanceIssuesCount}\`
+  const summaryMarkdown = `## ${gradeColor} GitGuard AI Code Review — Grade ${grade}
+
+### 📊 Code Quality Dashboard
+
+| Metric | Status | Rating / Details |
+| :--- | :--- | :--- |
+| **Code Quality Score** | ${metrics.codeQualityScore >= 80 ? '✅ Healthy' : '⚠️ Attention Needed'} | \`${metrics.codeQualityScore}%\` |
+| **Overall Rating** | **Grade ${grade}** | ${buildProgressBar(metrics.codeQualityScore)} |
+| **Vulnerabilities** | ${metrics.vulnerabilitiesCount === 0 ? '🛡️ Safe' : '🚨 Critical Action'} | \`${metrics.vulnerabilitiesCount} detected\` |
+| **Performance Issues** | ${metrics.performanceIssuesCount === 0 ? '⚡ Optimized' : '🐢 Slowdowns'} | \`${metrics.performanceIssuesCount} found\` |
 
 ---
 
-### 📊 Review Summary
-- **Total Issues Found:** ${findings.length}
-- **Critical:** ${criticalCount} | **High:** ${highCount} | **Medium:** ${mediumCount} | **Low:** ${findings.filter((f) => f.severity === 'low').length}
-- **Author:** @${context.authorLogin}
-- **Branch:** \`${context.headBranch}\` → \`${context.baseBranch}\`
+### 🔍 Review Overview
+- **PR Details:** #${context.prNumber} — **${context.title}**
+- **Branch Flow:** \`${context.headBranch}\` ➔ \`${context.baseBranch}\`
+- **Total Findings:** \`${findings.length}\` | **Critical:** \`${criticalCount}\` | **High:** \`${highCount}\` | **Medium:** \`${mediumCount}\` | **Low/Info:** \`${findings.filter((f) => f.severity === 'low' || f.severity === 'info').length}\`
+- **Reviewed By:** GitGuard AI Bot (Trace ID: \`${eventId}\`)
+
+---
 `;
 
   blocks.push({
@@ -241,12 +275,15 @@ This review was generated by **GitGuard AI** using advanced LLM analysis (Gemini
   // ─── Assemble Full Markdown ───────────────────────────────────────────────
   const fullMarkdown = blocks.map((b) => b.content).join('\n');
 
-  log.info({
-    blockCount: blocks.length,
-    findingsCount: findings.length,
-    criticalCount,
-    highCount,
-  }, 'Findings formatted as Markdown');
+  log.info(
+    {
+      blockCount: blocks.length,
+      findingsCount: findings.length,
+      criticalCount,
+      highCount,
+    },
+    'Findings formatted as Markdown',
+  );
 
   return {
     title: `🤖 GitGuard AI Review — PR #${context.prNumber}`,
@@ -270,7 +307,9 @@ export function getInlineFindingsForFile(
   filename: string,
 ): IFinding[] {
   return findings
-    .filter((f) => f.file === filename && (f.severity === 'critical' || f.severity === 'high'))
+    .filter(
+      (f) => f.file === filename && (f.severity === 'critical' || f.severity === 'high'),
+    )
     .sort((a, b) => a.line - b.line);
 }
 
@@ -280,13 +319,14 @@ export function getInlineFindingsForFile(
  * @returns Markdown string for inline comment
  */
 export function formatInlineComment(finding: IFinding): string {
-  const emoji = {
-    critical: '🔴',
-    high: '🟠',
-    medium: '🟡',
-    low: '⚪',
-    info: '🔵',
-  }[finding.severity] ?? '❓';
+  const emoji =
+    {
+      critical: '🔴',
+      high: '🟠',
+      medium: '🟡',
+      low: '⚪',
+      info: '🔵',
+    }[finding.severity] ?? '❓';
 
   return `
 ${emoji} **${finding.severity.toUpperCase()}** | Confidence: ${Math.round(finding.confidence * 100)}%
@@ -312,11 +352,32 @@ function parseDiffIntoFiles(rawDiff: string): ProcessedFile[] {
   const files: ProcessedFile[] = [];
   const blocks = rawDiff.split(/(?=^diff --git )/m).filter((b) => b.trim());
   const langMap: Record<string, string> = {
-    ts: 'TypeScript', tsx: 'TypeScript', js: 'JavaScript', jsx: 'JavaScript',
-    py: 'Python', rb: 'Ruby', go: 'Go', rs: 'Rust', java: 'Java', kt: 'Kotlin',
-    swift: 'Swift', cs: 'C#', cpp: 'C++', c: 'C', php: 'PHP', sql: 'SQL',
-    sh: 'Shell', bash: 'Shell', yaml: 'YAML', yml: 'YAML', json: 'JSON',
-    html: 'HTML', css: 'CSS', scss: 'SCSS', vue: 'Vue', svelte: 'Svelte',
+    ts: 'TypeScript',
+    tsx: 'TypeScript',
+    js: 'JavaScript',
+    jsx: 'JavaScript',
+    py: 'Python',
+    rb: 'Ruby',
+    go: 'Go',
+    rs: 'Rust',
+    java: 'Java',
+    kt: 'Kotlin',
+    swift: 'Swift',
+    cs: 'C#',
+    cpp: 'C++',
+    c: 'C',
+    php: 'PHP',
+    sql: 'SQL',
+    sh: 'Shell',
+    bash: 'Shell',
+    yaml: 'YAML',
+    yml: 'YAML',
+    json: 'JSON',
+    html: 'HTML',
+    css: 'CSS',
+    scss: 'SCSS',
+    vue: 'Vue',
+    svelte: 'Svelte',
   };
 
   for (const block of blocks) {
@@ -329,7 +390,8 @@ function parseDiffIntoFiles(rawDiff: string): ProcessedFile[] {
     const changeType = detectChangeType(lines);
 
     // Count additions/deletions
-    let additions = 0, deletions = 0;
+    let additions = 0,
+      deletions = 0;
     for (const line of lines) {
       if (line.startsWith('+') && !line.startsWith('+++')) additions++;
       else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
@@ -355,9 +417,7 @@ function parseDiffIntoFiles(rawDiff: string): ProcessedFile[] {
 /**
  * Detect change type from diff block lines.
  */
-function detectChangeType(
-  lines: string[],
-): 'added' | 'modified' | 'deleted' | 'renamed' {
+function detectChangeType(lines: string[]): 'added' | 'modified' | 'deleted' | 'renamed' {
   if (lines.some((l) => l.startsWith('new file mode'))) return 'added';
   if (lines.some((l) => l.startsWith('deleted file mode'))) return 'deleted';
   if (lines.some((l) => l.startsWith('rename from'))) return 'renamed';
@@ -369,7 +429,9 @@ function detectChangeType(
  */
 function parseHunks(fileDiff: string, findings: IFinding[]): DiffHunk[] {
   const hunks: DiffHunk[] = [];
-  const hunkMatches = Array.from(fileDiff.matchAll(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/g));
+  const hunkMatches = Array.from(
+    fileDiff.matchAll(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/g),
+  );
 
   for (let i = 0; i < hunkMatches.length; i++) {
     const match = hunkMatches[i];
@@ -432,7 +494,9 @@ function parseHunks(fileDiff: string, findings: IFinding[]): DiffHunk[] {
         newStartLine,
         newLineCount,
         lines: diffLines,
-        findings: findings.filter((f) => f.line >= newStartLine && f.line < newStartLine + newLineCount),
+        findings: findings.filter(
+          (f) => f.line >= newStartLine && f.line < newStartLine + newLineCount,
+        ),
       });
     }
   }
@@ -440,24 +504,30 @@ function parseHunks(fileDiff: string, findings: IFinding[]): DiffHunk[] {
   return hunks;
 }
 
-/**
- * Build Markdown block for a single file's findings.
- */
 function buildFileBlock(filename: string, findings: IFinding[]): MarkdownCommentBlock {
-  let markdown = `### 📄 \`${filename}\`\n`;
+  let markdown = `### 📄 \`${filename}\`\n\n`;
 
   for (const finding of findings) {
-    const emoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '⚪', info: '🔵' }[finding.severity] ?? '❓';
-    markdown += `
-**${emoji} Line ${finding.line}** — ${finding.severity.toUpperCase()} (${Math.round(finding.confidence * 100)}%)
+    const alertHeader =
+      {
+        critical: '> [!CAUTION]\n> ### 🚨 CRITICAL FINDING',
+        high: '> [!WARNING]\n> ### ⚠️ HIGH SEVERITY FINDING',
+        medium: '> [!IMPORTANT]\n> ### 💡 MEDIUM SEVERITY FINDING',
+        low: '> [!NOTE]\n> ### ℹ️ LOW SEVERITY FINDING',
+        info: '> [!NOTE]\n> ### ℹ️ INFO FINDING',
+      }[finding.severity] ?? '> [!NOTE]';
 
-${finding.message}
+    markdown += `${alertHeader}\n`;
+    markdown += `> **Line ${finding.line}** | Confidence: **${Math.round(finding.confidence * 100)}%**\n`;
+    markdown += `> \n`;
+    markdown += `> ${finding.message}\n\n`;
 
-\`\`\`suggestion
-${finding.suggestion}
-\`\`\`
-
-`;
+    if (finding.suggestion) {
+      markdown += `#### 💡 Suggested Fix:\n`;
+      markdown += `\`\`\`suggestion\n`;
+      markdown += `${finding.suggestion}\n`;
+      markdown += `\`\`\`\n\n`;
+    }
   }
 
   return {

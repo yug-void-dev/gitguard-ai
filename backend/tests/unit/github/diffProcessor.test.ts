@@ -9,10 +9,19 @@ import { PRContext } from '../../../src/types/analysis';
 const EVENT_ID = 'test-event-diff';
 
 const BASE_CONTEXT: PRContext = {
-  prNumber: 42, title: 'feat: add auth', description: 'Adds JWT auth',
-  linkedIssues: [], headBranch: 'feat/auth', baseBranch: 'main',
-  language: 'TypeScript', changedFiles: 2, additions: 50, deletions: 5,
-  isDraft: false, repositoryFullName: 'owner/repo', authorLogin: 'octocat',
+  prNumber: 42,
+  title: 'feat: add auth',
+  description: 'Adds JWT auth',
+  linkedIssues: [],
+  headBranch: 'feat/auth',
+  baseBranch: 'main',
+  language: 'TypeScript',
+  changedFiles: 2,
+  additions: 50,
+  deletions: 5,
+  isDraft: false,
+  repositoryFullName: 'owner/repo',
+  authorLogin: 'octocat',
 };
 
 const SIMPLE_DIFF = `diff --git a/src/auth.ts b/src/auth.ts
@@ -82,7 +91,9 @@ describe('processDiff', () => {
     });
 
     it('should skip node_modules files', () => {
-      const diff = SIMPLE_DIFF.split('src/auth.ts').join('node_modules/express/lib/router.ts');
+      const diff = SIMPLE_DIFF.split('src/auth.ts').join(
+        'node_modules/express/lib/router.ts',
+      );
       const result = processDiff(diff, BASE_CONTEXT, EVENT_ID);
       expect(result.allFiles).toHaveLength(0);
     });

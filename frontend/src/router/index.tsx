@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 
 // Pages
 import LoginPage from '../pages/LoginPage';
+import OAuthCallbackPage from '../pages/OAuthCallbackPage';
 import DashboardPage from '../pages/DashboardPage';
 import HistoryPage from '../pages/HistoryPage';
 import ReviewsPage from '../pages/ReviewsPage';
@@ -37,6 +38,13 @@ const router = createBrowserRouter([
   {
     path: ROUTES.LOGIN,
     element: <LoginPage />,
+  },
+
+  // ── GitHub OAuth callback (MUST be public — token captured here before
+  //    ProtectedRoute runs, which would otherwise redirect to login) ─────────
+  {
+    path: '/auth/callback',
+    element: <OAuthCallbackPage />,
   },
 
   // ── Protected routes (auth guard + dashboard shell) ───────────────────────

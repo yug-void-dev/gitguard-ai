@@ -23,24 +23,27 @@ export async function callGroq(
 ): Promise<{ text: string; promptTokens?: number; completionTokens?: number }> {
   if (!env.GROQ_API_KEY) throw new Error('GROQ_API_KEY not configured');
 
-  logger.debug({ model: 'llama-3.3-70b-versatile', promptChars: userPrompt.length }, 'Calling Groq');
+  logger.debug(
+    { model: 'llama-3.3-70b-versatile', promptChars: userPrompt.length },
+    'Calling Groq',
+  );
 
   try {
     const completion = await getClient().chat.completions.create({
-      model:           'llama-3.3-70b-versatile',
+      model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt },
+        { role: 'user', content: userPrompt },
       ],
-      max_tokens:      options.maxTokens ?? env.LLM_MAX_TOKENS,
-      temperature:     options.temperature ?? 0.1,
+      max_tokens: options.maxTokens ?? env.LLM_MAX_TOKENS,
+      temperature: options.temperature ?? 0.1,
       response_format: { type: 'json_object' },
-      user:            options.user ?? 'gitguard-ai-system',
+      user: options.user ?? 'gitguard-ai-system',
     });
 
     return {
-      text:             completion.choices[0]?.message?.content ?? '',
-      promptTokens:     completion.usage?.prompt_tokens,
+      text: completion.choices[0]?.message?.content ?? '',
+      promptTokens: completion.usage?.prompt_tokens,
       completionTokens: completion.usage?.completion_tokens,
     };
   } catch (error) {

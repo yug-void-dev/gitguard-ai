@@ -14,6 +14,8 @@ import { AppBackground } from '../components/layout/AppBackground';
 import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 import { T } from '../constants/theme';
 import { AnimSelect } from '../components/common/AnimSelect';
+import ExportButton from '../components/history/ExportButton';
+import { ExportPdfButton } from '../components/history/ExportPdfButton';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -218,14 +220,7 @@ const HistoryPage: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: '100%',
-        padding: '24px 28px',
-      }}
-    >
+    <div className="page-shell" style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
       <AppBackground />
       
       <motion.div
@@ -268,7 +263,7 @@ const HistoryPage: React.FC = () => {
             transition={{ delay: 0.12, ease: EASE }}
             style={{
               fontFamily: "'Inter', sans-serif",
-              fontSize: 26,
+              fontSize: 'clamp(20px, 4vw, 26px)',
               fontWeight: 800,
               color: T.text,
               letterSpacing: '-0.6px',
@@ -291,7 +286,7 @@ const HistoryPage: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))',
             gap: 12,
             marginBottom: 28,
           }}
@@ -339,6 +334,8 @@ const HistoryPage: React.FC = () => {
                 }}
               />
             </div>
+            <ExportButton reviews={filtered} />
+            <ExportPdfButton reviews={filtered} />
             <motion.button
               whileHover={{ scale: 1.05, borderColor: `${T.cyan}40` }}
               whileTap={{ scale: 0.95 }}

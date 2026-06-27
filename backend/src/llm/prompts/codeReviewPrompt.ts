@@ -58,10 +58,15 @@ CRITICAL RULES:
 - fixCode must be real corrected code, not pseudocode`;
 }
 
-export function buildUserPrompt(chunk: DiffChunk, context: PRContext, reviewId: string): string {
-  const chunkNote = chunk.totalChunks > 1
-    ? `\nNOTE: Reviewing chunk ${chunk.chunkIndex}/${chunk.totalChunks}. Focus only on files in this chunk.`
-    : '';
+export function buildUserPrompt(
+  chunk: DiffChunk,
+  context: PRContext,
+  reviewId: string,
+): string {
+  const chunkNote =
+    chunk.totalChunks > 1
+      ? `\nNOTE: Reviewing chunk ${chunk.chunkIndex}/${chunk.totalChunks}. Focus only on files in this chunk.`
+      : '';
 
   return `Review the following pull request diff. Return ONLY a valid JSON object.
 

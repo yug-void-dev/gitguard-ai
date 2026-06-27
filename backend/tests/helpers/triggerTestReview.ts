@@ -41,10 +41,8 @@ async function trigger() {
   const body = JSON.stringify(payload);
 
   // Compute HMAC signature (as GitHub does)
-  const signature = 'sha256=' + crypto
-    .createHmac('sha256', SECRET)
-    .update(body)
-    .digest('hex');
+  const signature =
+    'sha256=' + crypto.createHmac('sha256', SECRET).update(body).digest('hex');
 
   try {
     const response = await axios.post(TARGET_URL, payload, {
@@ -59,7 +57,9 @@ async function trigger() {
     console.log('✅ Webhook accepted by server!');
     console.log('Status:', response.status);
     console.log('Response:', response.data);
-    console.log('\n👉 Check your main backend terminal to see the worker processing the job.');
+    console.log(
+      '\n👉 Check your main backend terminal to see the worker processing the job.',
+    );
   } catch (error: any) {
     console.error('❌ Failed to trigger webhook:');
     if (error.response) {

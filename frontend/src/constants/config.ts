@@ -39,6 +39,7 @@ export const STORAGE_KEYS = {
   SIDEBAR_COLLAPSED: 'gg_sidebar_collapsed',
   EMAIL_ALERTS: 'gg_email_alerts',
   AUTO_REVIEW: 'gg_auto_review',
+  AUTH_TOKEN: 'gg_auth_token',
 } as const;
 
 // ─── Severity ordering (high → low priority) ──────────────────────────────────

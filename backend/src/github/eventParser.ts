@@ -14,9 +14,7 @@ import {
   PullRequestEvent,
   PullRequestAction,
 } from '../types/github';
-import {
-  WebhookPayloadError,
-} from '../lib/errors';
+import { WebhookPayloadError } from '../lib/errors';
 
 /** Actions we actively process — all others are acknowledged but ignored */
 const SUPPORTED_ACTIONS: ReadonlySet<PullRequestAction> = new Set([
@@ -71,9 +69,15 @@ const githubPullRequestSchema = z.object({
   user: githubUserSchema,
 });
 
+/**
+ * Comprehensive Zod schema validating the entire webhook payload from GitHub.
+ * Protects the internal system from malformed, malicious, or unexpectedly altered
+ * data structures originating from unverified webhook deliveries.
+ */
 const webhookPayloadSchema = z.object({
   action: z.string(),
   number: z.number(),
+  rawDiff: z.string().optional(),
   pull_request: githubPullRequestSchema,
   repository: githubRepoSchema,
   sender: githubUserSchema,
@@ -89,9 +93,7 @@ const webhookPayloadSchema = z.object({
  * @throws {WebhookPayloadError} if the payload shape is invalid
  * @throws {WebhookEventNotSupportedError} if the action is not in SUPPORTED_ACTIONS
  */
-export function parsePullRequestEvent(
-  rawPayload: unknown,
-): PullRequestEvent | null {
+export function parsePullRequestEvent(rawPayload: unknown): PullRequestEvent | null {
   // ── Validate payload structure ────────────────────────────────────────
   const parseResult = webhookPayloadSchema.safeParse(rawPayload);
 
@@ -119,6 +121,7 @@ export function parsePullRequestEvent(
   const event: PullRequestEvent = {
     eventId: uuidv4(),
     action: payload.action as PullRequestAction,
+    rawDiff: payload.rawDiff,
 
     pullRequest: {
       id: pr.id,

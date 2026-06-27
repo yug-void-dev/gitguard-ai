@@ -78,7 +78,9 @@ describe('withRetry() — failure cases', () => {
     const hardError = new Error('Validation failed');
     const fn = jest.fn().mockRejectedValue(hardError);
 
-    await expect(withRetry(fn, { maxAttempts: 3 }, EVENT_ID)).rejects.toThrow('Validation failed');
+    await expect(withRetry(fn, { maxAttempts: 3 }, EVENT_ID)).rejects.toThrow(
+      'Validation failed',
+    );
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
@@ -89,7 +91,7 @@ describe('withRetry() — failure cases', () => {
     const fn = jest.fn().mockRejectedValue(rateLimitError);
 
     await expect(
-      withRetry(fn, { maxAttempts: 2, baseDelayMs: 1 }, EVENT_ID)
+      withRetry(fn, { maxAttempts: 2, baseDelayMs: 1 }, EVENT_ID),
     ).rejects.toThrow('Rate limited');
     expect(fn).toHaveBeenCalledTimes(2);
   });
@@ -108,7 +110,7 @@ describe('withRetry() — failure cases', () => {
         baseDelayMs: 1,
         shouldRetry: (err) => (err as Error).message === 'custom-retryable',
       },
-      EVENT_ID
+      EVENT_ID,
     );
 
     expect(result).toBe('success');

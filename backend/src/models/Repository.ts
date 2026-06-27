@@ -17,8 +17,8 @@ export interface IRepositoryRule {
 
 export interface IRepository extends Document {
   // GitHub identifiers
-  githubId: number;          // same as repositoryId for compatibility
-  fullName: string;          // same as repositoryFullName for compatibility
+  githubId: number; // same as repositoryId for compatibility
+  fullName: string; // same as repositoryFullName for compatibility
   // owner reference
   ownerId: Types.ObjectId;
   // GitHub metadata
@@ -39,31 +39,31 @@ export interface IRepository extends Document {
 
 const repositoryRuleSchema = new Schema<IRepositoryRule>(
   {
-    strictMode:       { type: Boolean, default: false },
-    ignoreLinting:    { type: Boolean, default: false },
+    strictMode: { type: Boolean, default: false },
+    ignoreLinting: { type: Boolean, default: false },
     checkPerformance: { type: Boolean, default: true },
-    minConfidence:    { type: Number, default: 0.7, min: 0, max: 1 },
+    minConfidence: { type: Number, default: 0.7, min: 0, max: 1 },
   },
   { _id: false },
 );
 
 const repositorySchema = new Schema<IRepository>(
   {
-    githubId:       { type: Number, required: true, index: true },
-    fullName:       { type: String, required: true, index: true },
-    ownerId:        { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    isPrivate:      { type: Boolean, default: false },
-    defaultBranch:  { type: String, default: 'main' },
-    language:       { type: String, default: null },
-    webhookId:      { type: Number },
-    reviewMode:     {
+    githubId: { type: Number, required: true, index: true },
+    fullName: { type: String, required: true, index: true },
+    ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    isPrivate: { type: Boolean, default: false },
+    defaultBranch: { type: String, default: 'main' },
+    language: { type: String, default: null },
+    webhookId: { type: Number },
+    reviewMode: {
       type: String,
       enum: ['full', 'security-only', 'strict', 'off'],
       default: 'full',
     },
     ignorePatterns: { type: [String], default: [] },
     rules: { type: repositoryRuleSchema, default: (): Record<string, unknown> => ({}) },
-    isActive:       { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true, collection: 'repositories' },
 );

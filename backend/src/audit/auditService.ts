@@ -80,20 +80,14 @@ export async function writeAuditLog(params: AuditParams): Promise<void> {
     });
   } catch (dbError) {
     // Log but never throw — audit failure is non-fatal
-    logger.error(
-      { error: dbError, requestId },
-      'Failed to write audit log entry',
-    );
+    logger.error({ error: dbError, requestId }, 'Failed to write audit log entry');
   }
 }
 
 /**
  * Convenience: write a success audit entry for a processed PR event.
  */
-export async function auditSuccess(
-  req: Request,
-  event: PullRequestEvent,
-): Promise<void> {
+export async function auditSuccess(req: Request, event: PullRequestEvent): Promise<void> {
   return writeAuditLog({
     requestId: req.id,
     eventId: event.eventId,
@@ -136,10 +130,7 @@ export async function auditFailure(
 /**
  * Convenience: write an ignored event audit entry.
  */
-export async function auditIgnored(
-  req: Request,
-  githubAction: string,
-): Promise<void> {
+export async function auditIgnored(req: Request, githubAction: string): Promise<void> {
   return writeAuditLog({
     requestId: req.id,
     eventType: 'event_ignored',

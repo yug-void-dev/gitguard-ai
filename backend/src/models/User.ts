@@ -10,11 +10,14 @@ export interface IUser extends Document {
   githubId?: number;
   login: string;
   email: string;
+  role: 'admin' | 'reviewer' | 'viewer';
   password?: string;
   avatarUrl: string;
   profileUrl?: string;
   accessToken?: string;
   lastLogin: Date;
+  resetPasswordOtp?: string;
+  resetPasswordOtpExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -22,14 +25,17 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
   {
-    githubId:    { type: Number, unique: true, sparse: true, index: true },
-    login:       { type: String, required: true, unique: true },
-    email:       { type: String, required: true, unique: true },
-    password:    { type: String, select: false },
-    avatarUrl:   { type: String, default: 'https://github.com/identicons/jedi.png' },
-    profileUrl:  { type: String, default: '' },
+    githubId: { type: Number, unique: true, sparse: true, index: true },
+    login: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    role: { type: String, enum: ['admin', 'reviewer', 'viewer'], default: 'viewer' },
+    password: { type: String, select: false },
+    avatarUrl: { type: String, default: 'https://github.com/identicons/jedi.png' },
+    profileUrl: { type: String, default: '' },
     accessToken: { type: String, select: false },
-    lastLogin:   { type: Date, default: Date.now },
+    lastLogin: { type: Date, default: Date.now },
+    resetPasswordOtp: { type: String },
+    resetPasswordOtpExpires: { type: Date },
   },
   { timestamps: true, collection: 'users' },
 );

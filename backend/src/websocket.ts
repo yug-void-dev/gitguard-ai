@@ -14,7 +14,10 @@ export function initWebSocketServer(server: HttpServer): void {
 
   server.on('upgrade', (request, socket, head) => {
     try {
-      const { pathname } = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+      const { pathname } = new URL(
+        request.url || '',
+        `http://${request.headers.host || 'localhost'}`,
+      );
 
       if (pathname === '/ws/reviews') {
         wss?.handleUpgrade(request, socket, head, (ws) => {
@@ -44,6 +47,13 @@ export function initWebSocketServer(server: HttpServer): void {
   logger.info('🔌 WebSocket server initialized on /ws/reviews');
 }
 
+/**
+ * Broadcasts real-time events to all connected frontend clients via WebSockets.
+ * Used to push asynchronous PR review updates (queued, processing, completed)
+ * directly to the UI without requiring polling.
+ *
+ * @param event - The payload containing the event type, repository details, and review state.
+ */
 export function broadcastReviewEvent(event: {
   type: 'review:completed' | 'review:failed' | 'review:queued';
   payload: Record<string, unknown>;
@@ -68,5 +78,8 @@ export function broadcastReviewEvent(event: {
     }
   });
 
-  logger.debug({ eventType: event.type, clientCount: count }, '🔌 Broadcasted WebSocket event');
+  logger.debug(
+    { eventType: event.type, clientCount: count },
+    '🔌 Broadcasted WebSocket event',
+  );
 }

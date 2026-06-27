@@ -12,19 +12,36 @@ import { IFinding } from '../../../src/models/Review';
 import { PRContext } from '../../../src/types/analysis';
 
 const CTX: PRContext = {
-  prNumber: 42, title: 'feat: add auth', description: 'Adds JWT auth',
-  linkedIssues: [], headBranch: 'feat/auth', baseBranch: 'main',
-  language: 'TypeScript', changedFiles: 3, additions: 80, deletions: 10,
-  isDraft: false, repositoryFullName: 'owner/repo', authorLogin: 'octocat',
+  prNumber: 42,
+  title: 'feat: add auth',
+  description: 'Adds JWT auth',
+  linkedIssues: [],
+  headBranch: 'feat/auth',
+  baseBranch: 'main',
+  language: 'TypeScript',
+  changedFiles: 3,
+  additions: 80,
+  deletions: 10,
+  isDraft: false,
+  repositoryFullName: 'owner/repo',
+  authorLogin: 'octocat',
 };
 
-const METRICS = { codeQualityScore: 72, vulnerabilitiesCount: 1, performanceIssuesCount: 0 };
+const METRICS = {
+  codeQualityScore: 72,
+  vulnerabilitiesCount: 1,
+  performanceIssuesCount: 0,
+};
 
 function makeFinding(overrides: Partial<IFinding> = {}): IFinding {
   return {
-    file: 'src/auth.ts', line: 15, severity: 'high',
-    message: 'JWT secret not validated', suggestion: 'Validate length',
-    confidence: 0.85, ...overrides,
+    file: 'src/auth.ts',
+    line: 15,
+    severity: 'high',
+    message: 'JWT secret not validated',
+    suggestion: 'Validate length',
+    confidence: 0.85,
+    ...overrides,
   } as IFinding;
 }
 
@@ -65,13 +82,23 @@ describe('formatFindingsAsMarkdown', () => {
 
   it('should show 🟢 emoji when no critical/high findings', () => {
     const findings = [makeFinding({ severity: 'low' })];
-    const result = formatFindingsAsMarkdown(findings, CTX, METRICS, 'evt-1');
+    const result = formatFindingsAsMarkdown(
+      findings,
+      CTX,
+      { ...METRICS, codeQualityScore: 95 },
+      'evt-1',
+    );
     expect(result.fullMarkdown).toContain('🟢');
   });
 
   it('should show 🔴 emoji when critical findings present', () => {
     const findings = [makeFinding({ severity: 'critical' })];
-    const result = formatFindingsAsMarkdown(findings, CTX, METRICS, 'evt-1');
+    const result = formatFindingsAsMarkdown(
+      findings,
+      CTX,
+      { ...METRICS, codeQualityScore: 50 },
+      'evt-1',
+    );
     expect(result.fullMarkdown).toContain('🔴');
   });
 
@@ -118,15 +145,17 @@ describe('formatInlineComment', () => {
 describe('getInlineFindingsForFile', () => {
   const findings = [
     makeFinding({ file: 'src/auth.ts', severity: 'critical', line: 5 }),
-    makeFinding({ file: 'src/auth.ts', severity: 'high',     line: 10 }),
-    makeFinding({ file: 'src/auth.ts', severity: 'medium',   line: 15 }),
-    makeFinding({ file: 'src/user.ts', severity: 'high',     line: 20 }),
+    makeFinding({ file: 'src/auth.ts', severity: 'high', line: 10 }),
+    makeFinding({ file: 'src/auth.ts', severity: 'medium', line: 15 }),
+    makeFinding({ file: 'src/user.ts', severity: 'high', line: 20 }),
   ];
 
   it('should return only critical+high for the specified file', () => {
     const result = getInlineFindingsForFile(findings, 'src/auth.ts');
     expect(result).toHaveLength(2);
-    expect(result.every((f) => f.severity === 'critical' || f.severity === 'high')).toBe(true);
+    expect(result.every((f) => f.severity === 'critical' || f.severity === 'high')).toBe(
+      true,
+    );
   });
 
   it('should not include findings from other files', () => {

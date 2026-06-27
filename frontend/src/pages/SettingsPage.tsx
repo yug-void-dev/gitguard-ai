@@ -84,14 +84,7 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: '100%',
-        padding: '24px 28px',
-      }}
-    >
+    <div className="page-shell" style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
       <AppBackground />
 
       <motion.div
@@ -149,7 +142,7 @@ const SettingsPage: React.FC = () => {
             <h1
               style={{
                 fontFamily: "'Inter', sans-serif",
-                fontSize: 26,
+                fontSize: 'clamp(20px, 4vw, 26px)',
                 fontWeight: 800,
                 color: T.text,
                 letterSpacing: '-0.6px',

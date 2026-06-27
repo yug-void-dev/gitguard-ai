@@ -157,7 +157,9 @@ const DashboardLayout: React.FC = () => {
             overflowY: 'auto',
             overflowX: 'hidden',
             padding: 'var(--page-padding-y) var(--page-padding-x)',
+            paddingBottom: 'max(var(--page-padding-y), env(safe-area-inset-bottom))',
             position: 'relative',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <GlobalErrorBoundary fallbackMessage="Failed to load dashboard content.">

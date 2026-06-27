@@ -189,7 +189,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick: _onMenuClick }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px',
+        padding: '0 clamp(12px, 3vw, 28px)',
         borderBottom: `1px solid ${T.border}`,
         background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(6,7,20,0.82)',
         backdropFilter: 'blur(14px)',

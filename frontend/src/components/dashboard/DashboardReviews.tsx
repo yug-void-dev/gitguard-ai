@@ -127,6 +127,7 @@ export function DashboardReviewRow({
       >
         <DashboardSevBadge level={item.severity} />
         <span
+          className="review-row-time"
           style={{
             fontFamily: "'Fira Code',monospace",
             fontSize: 10,

@@ -2313,14 +2313,7 @@ const RepositoriesPage: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: '100%',
-        padding: '24px 28px',
-      }}
-    >
+    <div className="page-shell" style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
       <AppBackground />
 
       <motion.div

@@ -124,7 +124,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
   ];
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
+    <div className="page-shell" style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
       {/* Background Effects — shared AppBackground */}
       <AppBackground />
 
@@ -172,15 +172,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
         </div>
 
         {/* Dashboard Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 20,
-            marginBottom: 24,
-            borderBottom: `1px solid ${T.border}`,
-            paddingBottom: 2,
-          }}
-        >
+        <div className="dashboard-tabs">
           {[
             { id: 'overview', label: 'Overview' },
             { id: 'billing', label: 'Billing & Usage' },

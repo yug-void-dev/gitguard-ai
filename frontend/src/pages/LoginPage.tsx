@@ -689,8 +689,8 @@ const LoginPage: React.FC = () => {
   return (
     <>
       <div className="gg-root">
-        {/* ── LEFT ── */}
-        <div className="gg-left hidden md:flex">
+        {/* ── LEFT (desktop ≥1024px) ── */}
+        <div className="gg-left">
           <SentinelGraphic />
           <div className="gg-left-veil" />
           <div className="gg-left-edge" />
@@ -734,9 +734,19 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── RIGHT (NEW FORM SECTION) ── */}
-        <div className="flex-1 w-full md:w-1/2 flex items-center justify-center p-6 md:p-8 bg-[#0a0b1e]/95 backdrop-blur-md relative overflow-y-auto border-l border-indigo-500/20">
+        {/* ── RIGHT — login / register form ── */}
+        <div className="gg-right">
           <FloatingBubbles count={12} variant="login" />
+
+          {/* Mobile / tablet brand strip (hidden on desktop via CSS) */}
+          <div className="gg-mobile-brand">
+            <div className="gg-brand">
+              <div className="gg-brand-ico">
+                <Shield size={18} strokeWidth={2.5} color="white" />
+              </div>
+              <span className="gg-brand-name">GitGuard AI</span>
+            </div>
+          </div>
 
           {/* Content-protection vignette — keeps form readable over the bubbles */}
           <div
@@ -750,9 +760,8 @@ const LoginPage: React.FC = () => {
             }}
           />
 
-          <div className="w-full max-w-[480px] relative z-10 animate-[formSlideIn_1s_ease-out_0.5s_backwards] flex flex-col items-center">
-            
-            <div className="text-center" style={{ marginBottom: '3rem' }}>
+          <div className="login-form-shell">
+            <div className="form-icon-wrap">
               <Shield size={44} strokeWidth={2.5} className="form-icon mx-auto" />
             </div>
 
@@ -776,7 +785,7 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
-            <div className="w-full min-h-[400px]">
+            <div className="login-form-body">
               {forgotStep === 'none' ? (
                 <>
                   {tab === 'login' && (
@@ -847,7 +856,7 @@ const LoginPage: React.FC = () => {
                           <div className="input-line"></div>
                         </div>
 
-                        <div className="flex justify-between items-center mt-2">
+                        <div className="login-options-row">
                           <label className="remember-checkbox">
                             <input 
                               type="checkbox" 
@@ -930,7 +939,7 @@ const LoginPage: React.FC = () => {
                           <div className="input-line"></div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 w-full">
+                        <div className="login-password-row">
                           <div className="input-wrapper flex-1">
                             <div className="input-icon">
                               <Lock size={18} />

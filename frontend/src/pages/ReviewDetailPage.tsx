@@ -485,7 +485,7 @@ const ReviewDetailPage: React.FC = () => {
   }
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: T.bg, color: T.text, padding: '24px 16px' }}>
+    <div className="page-shell review-detail-page" style={{ position: 'relative', minHeight: '100%', background: T.bg, color: T.text }}>
       <AppBackground />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>

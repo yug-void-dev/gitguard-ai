@@ -29,6 +29,9 @@ input:-webkit-autofill:active {
   --font-display: 'Inter', sans-serif;
   --font-mono: 'Fira Code', monospace;
   --font-body: 'Inter', sans-serif;
+  --page-padding-x: clamp(12px, 3vw, 28px);
+  --page-padding-y: clamp(12px, 2.5vw, 24px);
+  --login-form-max: min(480px, 100%);
 }
 
 html[data-theme="light"] {
@@ -40,7 +43,8 @@ html[data-theme="light"] {
 }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
   background: var(--bg-deep);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -48,6 +52,13 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.25s, color 0.25s;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
 }
 
 input::placeholder {
@@ -68,20 +79,24 @@ input::placeholder {
 /* ─── Shared Layout Classes ─── */
 .gg-root {
   display: flex;
-  min-height: 100vh;
+  flex-direction: column;
+  min-height: 100dvh;
   width: 100%;
+  max-width: 100vw;
   font-family: var(--font-body);
   background: var(--bg-deep);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-/* LEFT SIDE - SENTINEL GRAPHIC */
+/* LEFT SIDE - SENTINEL GRAPHIC (desktop only) */
 .gg-left {
+  display: none;
   position: relative;
   flex: 1;
-  width: 50%;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
-  display: flex;
   align-items: stretch;
 }
 .gg-left-veil {
@@ -170,6 +185,72 @@ input::placeholder {
 @keyframes pulse-dot {
   0%,100% { box-shadow: 0 0 8px #22c55e; }
   50% { box-shadow: 0 0 16px #22c55e, 0 0 28px rgba(34,197,94,0.4); }
+}
+
+/* RIGHT SIDE — login / register form */
+.gg-right {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(16px, 4vw, 32px) clamp(14px, 4vw, 28px);
+  padding-bottom: max(clamp(16px, 4vw, 32px), env(safe-area-inset-bottom));
+  background: rgba(10, 11, 30, 0.95);
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  container-type: inline-size;
+  container-name: login-panel;
+}
+
+.gg-mobile-brand {
+  display: flex;
+  width: 100%;
+  max-width: var(--login-form-max);
+  margin-bottom: clamp(12px, 3vh, 24px);
+  padding-top: env(safe-area-inset-top);
+}
+
+.login-form-shell {
+  width: 100%;
+  max-width: var(--login-form-max);
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: formSlideIn 1s ease-out 0.5s backwards;
+}
+
+.form-icon-wrap {
+  text-align: center;
+  margin-bottom: clamp(1rem, 4vh, 2.5rem);
+}
+
+.login-form-body {
+  width: 100%;
+  min-height: 0;
+}
+
+.login-options-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 0.5rem;
+}
+
+.login-password-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
 }
 
 /* ─── Right Side Form Animations and Switcher ─── */
@@ -507,43 +588,266 @@ input::placeholder {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
-  .gg-root { flex-direction: column; overflow: auto; min-height: 100svh; }
-  .gg-left { flex: none; height: 52vh; min-height: 260px; }
-  .gg-left-edge {
-    right: auto;
-    bottom: 0;
-    top: auto;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(to right, transparent, rgba(99, 102, 241, 0.35) 40%, rgba(34, 211, 238, 0.25) 60%, transparent);
-  }
-  .gg-left-body { padding: 22px 24px 18px; }
-  .gg-hero h2 { font-size: clamp(22px, 5vw, 32px); }
-  .gg-right { width: 100%; min-width: unset; border-left: none; border-top: 1px solid var(--border); }
-  .gg-panel { padding: 28px 22px; max-width: 100%; }
+/* ─── Dashboard shell (layout + protected pages) ───────────────────────────── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 49;
+  cursor: pointer;
+}
+.sidebar-backdrop.visible {
+  display: block;
 }
 
+.dashboard-content-area {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.page-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.review-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.dashboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.dashboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── Responsive breakpoints ───────────────────────────────────────────────── */
+
+/* Large desktop — side-by-side login */
+@media (min-width: 1024px) {
+  .gg-root {
+    flex-direction: row;
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  .gg-left {
+    display: flex;
+    width: 50%;
+    max-width: 55%;
+    flex: 1 1 50%;
+  }
+
+  .gg-right {
+    width: 50%;
+    flex: 1 1 50%;
+    justify-content: center;
+    border-left: 1px solid rgba(99, 102, 241, 0.2);
+    border-top: none;
+    overflow-y: auto;
+  }
+
+  .gg-mobile-brand {
+    display: none;
+  }
+
+  .review-detail-grid {
+    grid-template-columns: 3fr 1fr;
+  }
+}
+
+/* Tablet */
+@media (max-width: 1023px) {
+  .gg-left {
+    display: none !important;
+  }
+
+  .gg-right {
+    min-height: 100dvh;
+    border-left: none;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --page-padding-x: 14px;
+    --page-padding-y: 14px;
+  }
+
+  .sidebar-mobile-drawer {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: 100dvh !important;
+    z-index: 50 !important;
+  }
+
+  .dashboard-content-area {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .navbar-hamburger {
+    display: flex !important;
+  }
+
+  .navbar-username {
+    display: none !important;
+  }
+
+  .notif-dropdown {
+    width: min(360px, calc(100vw - 16px)) !important;
+    right: -8px !important;
+  }
+
+  .user-dropdown {
+    width: min(200px, calc(100vw - 16px)) !important;
+    right: -8px !important;
+  }
+
+  .form-icon-wrap {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-icon-wrap .form-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .view-switcher {
+    max-width: 100%;
+  }
+
+  .switch-btn {
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .submit-btn {
+    padding: 1rem 1.25rem;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+  }
+
+  .gym-input {
+    padding: 1rem 1rem 1rem 2.5rem;
+    font-size: 0.92rem;
+  }
+
+  .gg-panel {
+    padding: 20px 16px;
+    max-width: 100%;
+  }
+}
+
+/* Small mobile */
 @media (max-width: 640px) {
-  .gg-left { height: 42vh; min-height: 220px; }
-  .gg-left-body { padding: 16px 18px 14px; }
-  .gg-hero h2 { font-size: clamp(18px, 6vw, 26px); }
-  .gg-panel { padding: 20px 16px; }
-  .switch-btn { padding: 0.75rem 1rem; font-size: 0.95rem; }
-  .submit-btn { padding: 1rem 1.5rem; font-size: 0.95rem; }
-  .gym-input { padding: 1rem 1rem 1rem 2.5rem; font-size: 0.9rem; }
+  .login-options-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .login-password-row {
+    flex-direction: column;
+  }
+
+  .switch-btn {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.88rem;
+  }
+
+  .submit-btn {
+    padding: 0.95rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .gg-head h1 {
+    font-size: 20px;
+  }
 }
 
 @media (max-width: 480px) {
-  .gg-left { height: 36vh; min-height: 180px; }
-  .gg-hero p { display: none; }
-  .gg-head h1 { font-size: 20px; }
-  .gg-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .gg-stat-v { font-size: 16px; }
-  .gg-stat { padding: 8px 12px; }
-  .gg-panel { padding: 16px 14px; }
-  .switch-btn { padding: 0.65rem 0.75rem; font-size: 0.85rem; letter-spacing: 0.5px; }
-  .submit-btn { margin-top: 1rem; padding: 0.9rem 1rem; font-size: 0.9rem; letter-spacing: 1px; }
+  :root {
+    --page-padding-x: 12px;
+    --page-padding-y: 12px;
+  }
+
+  .dashboard-greeting h1 {
+    font-size: 18px !important;
+  }
+
+  .navbar-chevron {
+    display: none !important;
+  }
+
+  .form-icon-wrap {
+    margin-bottom: 1rem;
+  }
+
+  .switch-btn {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+  }
+
+  .submit-btn {
+    margin-top: 1rem;
+    padding: 0.9rem 1rem;
+    font-size: 0.88rem;
+    letter-spacing: 0.5px;
+  }
+
+  .gg-panel {
+    padding: 16px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .review-row-time {
+    display: none;
+  }
+}
+
+@container login-panel (max-width: 420px) {
+  .view-switcher {
+    padding: 0.4rem;
+  }
+
+  .switch-btn {
+    padding: 0.7rem 0.65rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+  }
+
+  .form-icon-wrap {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Wide screens — password fields side by side on register */
+@media (min-width: 640px) {
+  .login-password-row {
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .login-password-row .input-wrapper {
+    flex: 1;
+    min-width: 0;
+  }
 }

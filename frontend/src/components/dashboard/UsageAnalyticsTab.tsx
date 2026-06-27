@@ -18,33 +18,6 @@ interface DailyUsage {
   estimatedCost: number;
 }
 
-// Generate realistic mock data for past 7 days as fail-safe fallback
-const GENERATE_MOCK_DATA = (): DailyUsage[] => {
-  const data: DailyUsage[] = [];
-  const now = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    
-    // Random but realistic numbers
-    const prompt = Math.round(15000 + Math.random() * 25000);
-    const completion = Math.round(5000 + Math.random() * 12000);
-    const total = prompt + completion;
-    // Cost calculation: $0.075/1M prompt, $0.30/1M completion (roughly Gemini 1.5 Flash rates)
-    const cost = Number(((prompt / 1000000) * 0.075 + (completion / 1000000) * 0.30).toFixed(4));
-
-    data.push({
-      date: dateStr,
-      promptTokens: prompt,
-      completionTokens: completion,
-      totalTokens: total,
-      estimatedCost: cost,
-    });
-  }
-  return data;
-};
-
 export const UsageAnalyticsTab: React.FC = () => {
   const [data, setData] = useState<DailyUsage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,15 +34,22 @@ export const UsageAnalyticsTab: React.FC = () => {
       setLoading(true);
       const response = await api.get('/api/analytics/usage');
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        setData(response.data.data);
+        const mappedData = response.data.data.map((item: any) => ({
+          date: item.date,
+          promptTokens: item.promptTokens || 0,
+          completionTokens: item.completionTokens || 0,
+          totalTokens: item.totalTokens || 0,
+          estimatedCost: item.estimatedCostUsd || 0,
+        }));
+        setData(mappedData);
         setIsDemoMode(false);
       } else {
         throw new Error('Invalid server data format');
       }
     } catch (err) {
-      console.warn('Analytics API not available. Using local client telemetry fallback.', err);
-      setData(GENERATE_MOCK_DATA());
-      setIsDemoMode(true);
+      console.warn('Analytics API not available or empty data.', err);
+      setData([]);
+      setIsDemoMode(false);
     } finally {
       setLoading(false);
     }
@@ -347,11 +327,12 @@ export const UsageAnalyticsTab: React.FC = () => {
               {/* Data Items */}
               {data.map((day, i) => {
                 const totalWidth = 90; // percentage limits
-                const leftPercent = paddingX + (i * (90 - paddingX)) / (data.length - 1);
+                const divisor = data.length > 1 ? data.length - 1 : 1;
+                const leftPercent = paddingX + (i * (90 - paddingX)) / divisor;
                 
                 // SVG coordinates mapping
-                const x = `${paddingX + (i * (92 - paddingX)) / (data.length - 1)}%`;
-                const rawX = paddingX + (i * (92 - paddingX)) / (data.length - 1); // numeric representation
+                const x = `${paddingX + (i * (92 - paddingX)) / divisor}%`;
+                const rawX = paddingX + (i * (92 - paddingX)) / divisor; // numeric representation
 
                 const formattedDate = new Date(day.date).toLocaleDateString(undefined, {
                   month: 'short',
@@ -442,8 +423,9 @@ export const UsageAnalyticsTab: React.FC = () => {
                   const nextDay = data[i + 1];
                   let nextLine = null;
                   if (nextDay) {
+                    const divisor = data.length > 1 ? data.length - 1 : 1;
                     const nextH = (nextDay.estimatedCost / maxCost) * (chartHeight - paddingY * 2);
-                    const nextX = `${paddingX + ((i + 1) * (92 - paddingX)) / (data.length - 1)}%`;
+                    const nextX = `${paddingX + ((i + 1) * (92 - paddingX)) / divisor}%`;
                     const nextY = chartHeight - paddingY - nextH;
                     nextLine = { x2: nextX, y2: nextY };
                   }

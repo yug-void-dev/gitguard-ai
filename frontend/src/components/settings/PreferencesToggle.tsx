@@ -22,7 +22,8 @@ export const PreferencesToggle: React.FC<PreferencesToggleProps> = ({
   onChange,
   color = T.cyan,
 }) => (
-  <motion.label
+  <motion.div
+    onClick={() => onChange(!checked)}
     whileHover={{ x: 2 }}
     style={{
       display: 'flex',
@@ -60,11 +61,11 @@ export const PreferencesToggle: React.FC<PreferencesToggleProps> = ({
         background: checked ? color : 'rgba(255,255,255,0.1)',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: checked ? 'flex-end' : 'flex-start',
         padding: '2px 4px',
         cursor: 'pointer',
         flexShrink: 0,
       }}
-      onClick={() => onChange(!checked)}
     >
       <motion.div
         layout
@@ -77,5 +78,5 @@ export const PreferencesToggle: React.FC<PreferencesToggleProps> = ({
         transition={{ type: 'spring', damping: 15 }}
       />
     </motion.div>
-  </motion.label>
+  </motion.div>
 );

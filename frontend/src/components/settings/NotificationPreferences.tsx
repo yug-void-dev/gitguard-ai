@@ -241,19 +241,22 @@ export const NotificationPreferences: React.FC = () => {
               <Hash size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Slack</span>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <motion.div
               onClick={() => setSettings((prev) => ({ ...prev, slackEnabled: !prev.slackEnabled }))}
               style={{
                 width: 44,
                 height: 24,
                 borderRadius: 12,
                 background: settings.slackEnabled ? T.cyan : 'rgba(255,255,255,0.1)',
-                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: settings.slackEnabled ? 'flex-end' : 'flex-start',
+                padding: '2px 4px',
                 cursor: 'pointer',
               }}
-            />
+            >
+              <motion.div layout style={{ width: 18, height: 18, borderRadius: 10, background: T.bg }} transition={{ type: 'spring', damping: 15 }} />
+            </motion.div>
           </div>
 
           <AnimatePresence>
@@ -300,19 +303,22 @@ export const NotificationPreferences: React.FC = () => {
               <MessageCircle size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Discord</span>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <motion.div
               onClick={() => setSettings((prev) => ({ ...prev, discordEnabled: !prev.discordEnabled }))}
               style={{
                 width: 44,
                 height: 24,
                 borderRadius: 12,
                 background: settings.discordEnabled ? T.cyan : 'rgba(255,255,255,0.1)',
-                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: settings.discordEnabled ? 'flex-end' : 'flex-start',
+                padding: '2px 4px',
                 cursor: 'pointer',
               }}
-            />
+            >
+              <motion.div layout style={{ width: 18, height: 18, borderRadius: 10, background: T.bg }} transition={{ type: 'spring', damping: 15 }} />
+            </motion.div>
           </div>
 
           <AnimatePresence>
@@ -359,19 +365,22 @@ export const NotificationPreferences: React.FC = () => {
               <FolderKanban size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Jira Software</span>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <motion.div
               onClick={() => setSettings((prev) => ({ ...prev, jiraEnabled: !prev.jiraEnabled }))}
               style={{
                 width: 44,
                 height: 24,
                 borderRadius: 12,
                 background: settings.jiraEnabled ? T.cyan : 'rgba(255,255,255,0.1)',
-                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: settings.jiraEnabled ? 'flex-end' : 'flex-start',
+                padding: '2px 4px',
                 cursor: 'pointer',
               }}
-            />
+            >
+              <motion.div layout style={{ width: 18, height: 18, borderRadius: 10, background: T.bg }} transition={{ type: 'spring', damping: 15 }} />
+            </motion.div>
           </div>
 
           <AnimatePresence>
@@ -459,19 +468,22 @@ export const NotificationPreferences: React.FC = () => {
               <Layers size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Linear App</span>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <motion.div
               onClick={() => setSettings((prev) => ({ ...prev, linearEnabled: !prev.linearEnabled }))}
               style={{
                 width: 44,
                 height: 24,
                 borderRadius: 12,
                 background: settings.linearEnabled ? T.cyan : 'rgba(255,255,255,0.1)',
-                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: settings.linearEnabled ? 'flex-end' : 'flex-start',
+                padding: '2px 4px',
                 cursor: 'pointer',
               }}
-            />
+            >
+              <motion.div layout style={{ width: 18, height: 18, borderRadius: 10, background: T.bg }} transition={{ type: 'spring', damping: 15 }} />
+            </motion.div>
           </div>
 
           <AnimatePresence>

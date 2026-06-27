@@ -379,7 +379,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
                       gap: 12,
                       marginBottom: 16,
                     }}
@@ -514,7 +514,7 @@ const DashboardPage: React.FC<{ user?: any }> = ({ user }) => {
                     </span>
                   </div>
                   <DashboardActivityChart reviews={reviews} />
-                  <div style={{ display: 'flex', marginTop: 12 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 12, gap: 12 }}>
                     {[
                       { l: 'Total PRs', v: reviewStats?.totalReviews ?? 0, c: T.cyan },
                       { l: 'Bugs Found', v: reviewStats?.totalVulnerabilities ?? 0, c: T.red },

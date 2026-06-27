@@ -175,7 +175,7 @@ export const NotificationPreferences: React.FC = () => {
         marginBottom: 20,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <Bell size={24} color={T.amber} />
         <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text }}>Notifications</h3>
       </div>
@@ -236,7 +236,7 @@ export const NotificationPreferences: React.FC = () => {
             marginBottom: 16,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Hash size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Slack</span>
@@ -298,7 +298,7 @@ export const NotificationPreferences: React.FC = () => {
             marginBottom: 16,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageCircle size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Discord</span>
@@ -360,7 +360,7 @@ export const NotificationPreferences: React.FC = () => {
             marginBottom: 16,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <FolderKanban size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Jira Software</span>
@@ -463,7 +463,7 @@ export const NotificationPreferences: React.FC = () => {
             padding: 16,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Layers size={18} color={T.cyan} />
               <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Linear App</span>

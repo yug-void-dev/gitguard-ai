@@ -116,7 +116,7 @@ export const TeamManagement: React.FC = () => {
         marginBottom: 20,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Users size={24} color={T.cyan} />
           <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text }}>Team Members</h3>
@@ -163,7 +163,7 @@ export const TeamManagement: React.FC = () => {
               marginBottom: 16,
             }}
           >
-            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
               <input
                 type="email"
                 placeholder="member@example.com"
@@ -195,7 +195,7 @@ export const TeamManagement: React.FC = () => {
                 <option value="viewer">Viewer</option>
               </select>
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -259,9 +259,11 @@ export const TeamManagement: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: '1 1 200px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
                   {member.name}
                 </div>

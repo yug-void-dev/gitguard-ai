@@ -113,7 +113,7 @@ export const ApiKeyManager: React.FC = () => {
         marginBottom: 20,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Key size={24} color={T.magenta} />
           <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text }}>API Keys</h3>

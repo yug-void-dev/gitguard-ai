@@ -1876,6 +1876,8 @@ const PageHeader: React.FC<{ total: number; onAdd: () => void }> = ({
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       marginBottom: 28,
+      flexWrap: 'wrap',
+      gap: 16,
     }}
   >
     <div>

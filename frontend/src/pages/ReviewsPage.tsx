@@ -347,6 +347,8 @@ const ReviewsPage: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'flex-start',
             marginBottom: 28,
+            flexWrap: 'wrap',
+            gap: 16,
           }}
         >
           <div>
@@ -390,7 +392,7 @@ const ReviewsPage: React.FC = () => {
             </motion.p>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: `0 0 28px ${T.cyan}70` }}
               whileTap={{ scale: 0.95 }}
